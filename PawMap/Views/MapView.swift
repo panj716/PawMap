@@ -89,13 +89,7 @@ struct PlaceAnnotationView: View {
                     .offset(y: -5)
             }
             
-            // 自动加载标记
-            if place.isAutoLoaded {
-                Image(systemName: "globe")
-                    .foregroundColor(.blue)
-                    .font(.system(size: 10))
-                    .offset(y: -8)
-            }
+            // 自动加载标记 (removed - not in current Place model)
         }
     }
 }

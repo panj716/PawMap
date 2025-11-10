@@ -1,0 +1,81 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Places collection - anyone can read, authenticated users can create
+    match /places/{placeId} {
+      allow read: if true;
+      allow create: if request.auth != null && 
+                       request.auth.uid == resource.data.createdBy;
+      allow update: if request.auth != null && 
+                       (request.auth.uid == resource.data.createdBy || 
+                        isAdmin(request.auth.uid));
+      allow delete: if request.auth != null && isAdmin(request.auth.uid);
+    }
+    
+    // Reviews collection - anyone can read, authenticated users can create
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if request.auth != null && 
+                       request.auth.uid == resource.data.userId;
+      allow update: if request.auth != null && 
+                       request.auth.uid == resource.data.userId;
+      allow delete: if request.auth != null && 
+                       (request.auth.uid == resource.data.userId || 
+                        isAdmin(request.auth.uid));
+    }
+    
+    // Users collection - users can only access their own data
+    match /users/{userId} {
+      allow read, write: if request.auth != null && 
+                            request.auth.uid == userId;
+    }
+    
+    // Favorites collection - users can only access their own favorites
+    match /favorites/{userId} {
+      allow read, write: if request.auth != null && 
+                            request.auth.uid == userId;
+    }
+    
+    // Curated places - anyone can read, only admins can write
+    match /curatedPlaces/{placeId} {
+      allow read: if true;
+      allow write: if request.auth != null && isAdmin(request.auth.uid);
+    }
+    
+    // Reports - users can create, admins can read and update
+    match /reports/{reportId} {
+      allow read: if request.auth != null && isAdmin(request.auth.uid);
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && isAdmin(request.auth.uid);
+    }
+    
+    // User stats - users can only access their own stats
+    match /userStats/{userId} {
+      allow read, write: if request.auth != null && 
+                            request.auth.uid == userId;
+    }
+    
+    // User preferences - users can only access their own preferences
+    match /userPreferences/{userId} {
+      allow read, write: if request.auth != null && 
+                            request.auth.uid == userId;
+    }
+    
+    // Admins collection - only admins can access
+    match /admins/{adminId} {
+      allow read, write: if request.auth != null && isAdmin(request.auth.uid);
+    }
+    
+    // Top picks - anyone can read, only admins can write
+    match /topPicks/{document} {
+      allow read: if true;
+      allow write: if request.auth != null && isAdmin(request.auth.uid);
+    }
+    
+    // Helper function to check admin status
+    function isAdmin(uid) {
+      return get(/databases/$(database)/documents/admins/$(uid)).data.isAdmin == true;
+    }
+  }
+}
+

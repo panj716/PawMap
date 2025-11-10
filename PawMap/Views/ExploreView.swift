@@ -11,55 +11,54 @@ struct ExploreView: View {
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 0) {
-                // 搜索栏
+            VStack {
+                // Search Bar
                 SearchBar(text: $searchText)
-                    .onChange(of: searchText) { newValue in
-                        placesManager.searchPlaces(query: newValue)
-                    }
                 
-                // 类型筛选
+                // Filter Buttons
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
-                        FilterChip(
+                        FilterButton(
                             title: "全部",
-                            isSelected: selectedType == nil
-                        ) {
-                            selectedType = nil
-                            placesManager.filterPlaces(by: nil)
-                        }
+                            isSelected: selectedType == nil,
+                            action: { selectedType = nil }
+                        )
                         
                         ForEach(Place.PlaceType.allCases, id: \.self) { type in
-                            FilterChip(
+                            FilterButton(
                                 title: type.displayName,
-                                isSelected: selectedType == type
-                            ) {
-                                selectedType = type
-                                placesManager.filterPlaces(by: type)
-                            }
+                                isSelected: selectedType == type,
+                                action: { selectedType = type }
+                            )
                         }
                     }
                     .padding(.horizontal)
                 }
-                .padding(.vertical, 8)
                 
-                // 地点列表
-                List(placesManager.filteredPlaces) { place in
-                    PlaceRowView(place: place)
-                        .onTapGesture {
-                            placesManager.selectedPlace = place
-                        }
+                // Places List
+                List(filteredPlaces) { place in
+                    SimplePlaceRow(place: place)
                 }
-                .listStyle(PlainListStyle())
             }
             .navigationTitle("探索")
         }
-        .sheet(item: $placesManager.selectedPlace) { place in
-            PlaceDetailView(place: place)
+    }
+    
+    private var filteredPlaces: [Place] {
+        var places = placesManager.places
+        
+        if let selectedType = selectedType {
+            places = places.filter { $0.type == selectedType }
         }
-        .onAppear {
-            placesManager.filterPlaces(by: selectedType)
+        
+        if !searchText.isEmpty {
+            places = places.filter { place in
+                place.name.localizedCaseInsensitiveContains(searchText) ||
+                place.address.localizedCaseInsensitiveContains(searchText)
+            }
         }
+        
+        return places
     }
 }
 
@@ -72,26 +71,13 @@ struct SearchBar: View {
                 .foregroundColor(.gray)
             
             TextField("搜索地点...", text: $text)
-                .textFieldStyle(PlainTextFieldStyle())
-            
-            if !text.isEmpty {
-                Button(action: {
-                    text = ""
-                }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(.gray)
-                }
-            }
+                .textFieldStyle(RoundedBorderTextFieldStyle())
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(Color(.systemGray6))
-        .cornerRadius(10)
         .padding(.horizontal)
     }
 }
 
-struct FilterChip: View {
+struct FilterButton: View {
     let title: String
     let isSelected: Bool
     let action: () -> Void
@@ -109,73 +95,40 @@ struct FilterChip: View {
     }
 }
 
-struct PlaceRowView: View {
+struct SimplePlaceRow: View {
     let place: Place
-    @EnvironmentObject var userManager: UserManager
     
     var body: some View {
-        HStack(spacing: 12) {
-            // 类型图标
-            ZStack {
-                Circle()
-                    .fill(Color(place.type.color))
-                    .frame(width: 40, height: 40)
-                
-                Image(systemName: place.type.iconName)
-                    .foregroundColor(.white)
-                    .font(.system(size: 18, weight: .medium))
-            }
-            
-            // 地点信息
+        HStack {
             VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(place.name)
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                    
-                    Spacer()
-                    
-                    if userManager.isFavorite(placeId: place.id) {
-                        Image(systemName: "heart.fill")
-                            .foregroundColor(.red)
-                            .font(.system(size: 14))
-                    }
-                }
+                Text(place.name)
+                    .font(.headline)
+                    .foregroundColor(.primary)
                 
                 Text(place.address)
                     .font(.caption)
                     .foregroundColor(.secondary)
-                    .lineLimit(1)
                 
-                HStack {
-                    HStack(spacing: 2) {
-                        ForEach(0..<5) { index in
-                            Image(systemName: index < Int(place.rating) ? "star.fill" : "star")
-                                .foregroundColor(.yellow)
-                                .font(.system(size: 12))
-                        }
-                    }
-                    
-                    Text(String(format: "%.1f", place.rating))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    
-                    Spacer()
-                    
-                    if place.isAutoLoaded {
-                        HStack(spacing: 4) {
-                            Image(systemName: "globe")
-                                .font(.system(size: 10))
-                            Text("互联网")
-                                .font(.caption)
-                        }
-                        .foregroundColor(.blue)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.blue.opacity(0.1))
-                        .cornerRadius(4)
-                    }
-                }
+                Text(place.notes)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .lineLimit(2)
+            }
+            
+            Spacer()
+            
+            VStack {
+                Text(String(format: "%.1f", place.rating))
+                    .font(.headline)
+                    .foregroundColor(.orange)
+                
+                Text(place.type.displayName)
+                    .font(.caption)
+                    .foregroundColor(.blue)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 2)
+                    .background(Color.blue.opacity(0.1))
+                    .cornerRadius(4)
             }
         }
         .padding(.vertical, 4)

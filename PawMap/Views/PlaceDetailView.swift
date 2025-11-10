@@ -52,7 +52,7 @@ struct PlaceDetailView: View {
                         }
                         Text(String(format: "%.1f", place.rating))
                             .font(.headline)
-                        Text("(\(place.reviews.count) 评价)")
+                        Text("(0 评价)") // TODO: Load reviews from Firebase
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -113,15 +113,15 @@ struct PlaceDetailView: View {
                             .foregroundColor(.blue)
                         }
                         
-                        if place.reviews.isEmpty {
+                        if true { // place.reviews.isEmpty { // TODO: Load reviews from Firebase
                             Text("暂无评价")
                                 .font(.body)
                                 .foregroundColor(.secondary)
                                 .italic()
                         } else {
-                            ForEach(place.reviews) { review in
-                                ReviewRowView(review: review)
-                            }
+                            // ForEach(place.reviews) { review in
+                            //     ReviewRow(review: review)
+                            // }
                         }
                     }
                     
@@ -188,7 +188,6 @@ struct PlaceDetailView: View {
 
 #Preview {
     PlaceDetailView(place: Place(
-        id: "1",
         name: "Belle Isle Park",
         type: .park,
         address: "Belle Isle, Detroit, MI",
@@ -197,17 +196,7 @@ struct PlaceDetailView: View {
         rating: 4.5,
         tags: ["户外", "大空间", "水边"],
         notes: "美丽的岛屿公园，有专门的狗狗区域",
-        userName: "系统",
-        isAutoLoaded: true,
-        verificationCount: 15,
-        source: "互联网",
-        reviews: [],
-        dogAmenities: DogAmenities.empty,
-        images: [],
-        createdAt: Date(),
-        updatedAt: Date(),
-        reports: [],
-        isVerified: true
+        createdBy: "system"
     ))
     .environmentObject(UserManager())
     .environmentObject(PlacesManager())

@@ -75,21 +75,46 @@ struct SplashScreenView: View {
                 
                 Spacer()
                 
-                // 底部装饰性脚印
-                HStack(spacing: 20) {
-                    ForEach(0..<5, id: \.self) { index in
-                        Image(systemName: "pawprint.fill")
-                            .font(.system(size: 20))
-                            .foregroundColor(.white.opacity(0.3))
+                // 活泼的小狗跳跃和跑步动画
+                VStack(spacing: 15) {
+                    Text("Loading...")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.white.opacity(0.8))
+                        .opacity(pawPrintsOpacity)
+                    
+                    // 小狗活动区域
+                    ZStack {
+                        // 背景圆形区域
+                        Circle()
+                            .fill(Color.white.opacity(0.1))
+                            .frame(width: 180, height: 180)
                             .opacity(pawPrintsOpacity)
-                            .scaleEffect(isAnimating ? 1.2 : 0.8)
-                            .animation(
-                                .easeInOut(duration: 0.6)
-                                .repeatForever(autoreverses: true)
-                                .delay(Double(index) * 0.1),
-                                value: isAnimating
-                            )
+                        
+                        // 跑步中的小狗动画
+                        Text("🐕")
+                            .font(.system(size: 40))
+                            .scaleEffect(y: isAnimating ? 0.9 : 1.0)
+                            .offset(y: isAnimating ? 3 : -3)
+                            .animation(.easeInOut(duration: 0.4).repeatForever(autoreverses: true), value: isAnimating)
+                            .opacity(pawPrintsOpacity)
+                        
+                        // 跑步脚印轨迹
+                        ForEach(0..<3, id: \.self) { index in
+                            Text("🐾")
+                                .font(.system(size: 12))
+                                .opacity(isAnimating ? 0.7 : 0.4)
+                                .offset(x: CGFloat(index * 30 - 30), y: CGFloat((index % 2) * 6 - 3))
+                                .animation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true).delay(Double(index) * 0.2), value: isAnimating)
+                        }
                     }
+                    .frame(width: 200, height: 200)
+                    
+                    // 加载文字
+                    Text("Finding dog-friendly places near you...")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.white.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                        .opacity(pawPrintsOpacity)
                 }
                 .padding(.bottom, 50)
             }

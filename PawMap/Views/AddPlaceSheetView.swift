@@ -1,12 +1,14 @@
 import SwiftUI
 import PhotosUI
 import CoreLocation
+import Combine
 
 struct AddPlaceSheetView: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject var placesManager: PlacesManager
+    @EnvironmentObject var placeViewModel: PlaceViewModel
+    @EnvironmentObject var authViewModel: AuthViewModel
     @EnvironmentObject var locationManager: LocationManager
-    @EnvironmentObject var userManager: UserManager
+    @EnvironmentObject var placesManager: PlacesManager // Keep for now for compatibility
     
     @State private var name = ""
     @State private var selectedType: Place.PlaceType = .other
@@ -18,6 +20,8 @@ struct AddPlaceSheetView: View {
     @State private var imageData: [Data] = []
     @State private var showingImagePicker = false
     @State private var isSubmitting = false
+    @State private var errorMessage: String?
+    @State private var geocodingAddress = false
     
     var body: some View {
         NavigationView {
@@ -210,11 +214,22 @@ struct AddPlaceSheetView: View {
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("提交") {
-                        submitPlace()
+                    if isSubmitting {
+                        ProgressView()
+                    } else {
+                        Button("提交") {
+                            submitPlace()
+                        }
+                        .disabled(name.isEmpty || address.isEmpty)
                     }
-                    .disabled(name.isEmpty || address.isEmpty || isSubmitting)
                 }
+            }
+            .alert("错误", isPresented: .constant(errorMessage != nil)) {
+                Button("确定") {
+                    errorMessage = nil
+                }
+            } message: {
+                Text(errorMessage ?? "")
             }
         }
         .onChange(of: selectedImages) { newImages in
@@ -239,39 +254,103 @@ struct AddPlaceSheetView: View {
     }
     
     private func submitPlace() {
-        guard !name.isEmpty, !address.isEmpty else { return }
+        guard !name.isEmpty, !address.isEmpty else { 
+            errorMessage = "请填写地点名称和地址"
+            return 
+        }
+        
+        guard let userId = authViewModel.currentUser?.id else {
+            errorMessage = "请先登录"
+            return
+        }
         
         isSubmitting = true
+        geocodingAddress = true
+        errorMessage = nil
         
-        // 创建新地点
-        let newPlace = Place(
-            id: UUID().uuidString,
-            name: name,
-            type: selectedType,
-            address: address,
-            latitude: locationManager.location?.coordinate.latitude ?? 0.0,
-            longitude: locationManager.location?.coordinate.longitude ?? 0.0,
-            rating: rating,
-            tags: [],
-            notes: notes,
-            userName: userManager.currentUser?.name ?? "匿名用户",
-            isAutoLoaded: false,
-            verificationCount: 0,
-            source: "用户添加",
-            reviews: [],
-            dogAmenities: dogAmenities,
-            images: imageData.map { $0.base64EncodedString() },
-            createdAt: Date(),
-            updatedAt: Date(),
-            reports: [],
-            isVerified: false
-        )
+        print("🔍 Geocoding address: \(address)")
         
-        placesManager.addPlace(newPlace)
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            isSubmitting = false
-            dismiss()
+        // Geocode the address to get latitude and longitude
+        let geocoder = CLGeocoder()
+        geocoder.geocodeAddressString(address) { [self] placemarks, error in
+            geocodingAddress = false
+            
+            if let error = error {
+                print("❌ Geocoding error: \(error.localizedDescription)")
+                isSubmitting = false
+                errorMessage = "无法找到该地址: \(error.localizedDescription)"
+                return
+            }
+            
+            guard let placemark = placemarks?.first,
+                  let coordinate = placemark.location?.coordinate else {
+                print("❌ No coordinates found for address")
+                isSubmitting = false
+                errorMessage = "无法找到该地址的坐标，请尝试输入更详细的地址"
+                return
+            }
+            
+            let latitude = coordinate.latitude
+            let longitude = coordinate.longitude
+            
+            print("✅ Geocoding successful: lat=\(latitude), lng=\(longitude)")
+            
+            // 创建新地点
+            let newPlace = Place(
+                id: UUID().uuidString,
+                name: name,
+                type: selectedType,
+                address: address,
+                latitude: latitude,
+                longitude: longitude,
+                rating: rating,
+                tags: [],
+                notes: notes,
+                createdBy: userId,
+                createdAt: Date(),
+                updatedAt: Date(),
+                isVerified: false,
+                reportCount: 0,
+                images: [],
+                dogAmenities: dogAmenities
+            )
+            
+            print("🔄 Starting to add place to Firebase: \(newPlace.name)")
+            
+            // Save to Firebase using PlaceViewModel
+            var cancellable: AnyCancellable?
+            cancellable = placeViewModel.addPlace(newPlace)
+                .receive(on: DispatchQueue.main)
+                .sink(
+                    receiveCompletion: { completion in
+                        cancellable?.cancel()
+                        isSubmitting = false
+                        print("📍 Firebase add place completion received")
+                        
+                        if case .failure(let error) = completion {
+                            print("❌ Error adding place to Firebase: \(error.localizedDescription)")
+                            self.errorMessage = "保存失败: \(error.localizedDescription)"
+                        } else {
+                            print("✅ Place added to Firebase successfully")
+                            // Success - also update local manager for immediate UI update
+                            placesManager.addPlace(newPlace)
+                            dismiss()
+                        }
+                    },
+                    receiveValue: { _ in
+                        print("✅ Place added to Firebase successfully (value received)")
+                    }
+                )
+            
+            // Timeout after 10 seconds
+            DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
+                if isSubmitting {
+                    print("⏰ Firebase request timed out")
+                    cancellable?.cancel()
+                    isSubmitting = false
+                    self.errorMessage = "请求超时，请检查网络连接"
+                }
+            }
         }
     }
 }

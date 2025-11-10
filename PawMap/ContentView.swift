@@ -9,11 +9,47 @@ import SwiftUI
 import MapKit
 
 struct ContentView: View {
+    @StateObject private var authViewModel = AuthViewModel()
+    
     var body: some View {
         MainMapView()
             .environmentObject(LocationManager())
             .environmentObject(PlacesManager())
             .environmentObject(UserManager())
+            .environmentObject(authViewModel)
+    }
+}
+
+// MARK: - Main App View
+
+struct MainAppView: View {
+    @EnvironmentObject var authViewModel: AuthViewModel
+    @EnvironmentObject var placeViewModel: PlaceViewModel
+    @EnvironmentObject var locationService: LocationService
+    
+    var body: some View {
+        ZStack {
+            // Main map view
+            ModernMapView()
+                .environmentObject(placeViewModel)
+                .environmentObject(locationService)
+            
+            // Bottom navigation
+            VStack {
+                Spacer()
+                // BottomNavigationBar() - commented out due to missing parameters
+                // .environmentObject(authViewModel)
+                // .environmentObject(placeViewModel)
+            }
+        }
+        .sheet(isPresented: $authViewModel.showingLogin) {
+            LoginView()
+                .environmentObject(authViewModel)
+        }
+        .sheet(isPresented: $authViewModel.showingSignUp) {
+            SignUpView()
+                .environmentObject(authViewModel)
+        }
     }
 }
 
@@ -21,6 +57,7 @@ struct MainMapView: View {
     @EnvironmentObject var locationManager: LocationManager
     @EnvironmentObject var placesManager: PlacesManager
     @EnvironmentObject var userManager: UserManager
+    @EnvironmentObject var authViewModel: AuthViewModel
     
     @State private var showingFilterSheet = false
     @State private var showingAddPlaceSheet = false
@@ -33,7 +70,7 @@ struct MainMapView: View {
     var body: some View {
         ZStack {
             // 全屏地图
-            ModernMapView(selectedFilter: $selectedFilter)
+            ModernMapView()
                 .environmentObject(locationManager)
                 .environmentObject(placesManager)
                 .environmentObject(userManager)
@@ -95,7 +132,7 @@ struct MainMapView: View {
             }
             
             // 底部导航栏
-            VStack {
+        VStack {
                 Spacer()
                 
                 BottomNavigationBar(
@@ -104,6 +141,7 @@ struct MainMapView: View {
                     showingLocationPermissionAlert: $showingLocationPermissionAlert,
                     selectedTab: $selectedTab
                 )
+                .environmentObject(authViewModel)
             }
             
             // 位置权限提示
@@ -122,9 +160,10 @@ struct MainMapView: View {
         }
         .sheet(isPresented: $showingAddPlaceSheet) {
             AddPlaceSheetView()
+                .environmentObject(PlaceViewModel())
+                .environmentObject(authViewModel)
                 .environmentObject(locationManager)
                 .environmentObject(placesManager)
-                .environmentObject(userManager)
         }
         .sheet(isPresented: $showingSearchSheet) {
             SearchSheetView(searchText: $searchText)
@@ -155,8 +194,10 @@ struct BottomNavigationBar: View {
     @Binding var selectedTab: Int
     @EnvironmentObject var userManager: UserManager
     @EnvironmentObject var placesManager: PlacesManager
+    @EnvironmentObject var authViewModel: AuthViewModel
     @State private var showingFavoritesSheet = false
     @State private var showingProfileSheet = false
+    @State private var showingTopPicksSheet = false
     
     var body: some View {
         HStack(spacing: 0) {
@@ -169,10 +210,10 @@ struct BottomNavigationBar: View {
                     ZStack {
                         Circle()
                             .fill(selectedTab == 0 ? Color.pink.opacity(0.2) : Color.clear)
-                            .frame(width: 50, height: 50)
+                            .frame(width: 45, height: 45)
                         
                         Image(systemName: selectedTab == 0 ? "pawprint.circle.fill" : "pawprint.circle")
-                            .font(.system(size: 28))
+                            .font(.system(size: 24))
                             .foregroundColor(selectedTab == 0 ? .pink : .gray)
                     }
                     
@@ -183,9 +224,32 @@ struct BottomNavigationBar: View {
             }
             .frame(maxWidth: .infinity)
             
-            // 中间的 + 按钮 (主要按钮)
+            // Top Picks 按钮
             Button(action: {
                 selectedTab = 1
+                showingTopPicksSheet = true
+            }) {
+                VStack(spacing: 4) {
+                    ZStack {
+                        Circle()
+                            .fill(selectedTab == 1 ? Color.purple.opacity(0.2) : Color.clear)
+                            .frame(width: 45, height: 45)
+                        
+                        Image(systemName: selectedTab == 1 ? "heart.circle.fill" : "heart.circle")
+                            .font(.system(size: 24))
+                            .foregroundColor(selectedTab == 1 ? .purple : .gray)
+                    }
+                    
+                    Text("Top Picks")
+                        .font(.caption2)
+                        .foregroundColor(selectedTab == 1 ? .purple : .gray)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            
+            // 中间的 + 按钮 (主要按钮)
+            Button(action: {
+                selectedTab = 2
                 showingAddPlaceSheet = true
             }) {
                 ZStack {
@@ -210,36 +274,59 @@ struct BottomNavigationBar: View {
                                 .offset(x: 8, y: -8)
                         )
                 }
-                .scaleEffect(selectedTab == 1 ? 1.1 : 1.0)
+                .scaleEffect(selectedTab == 2 ? 1.1 : 1.0)
                 .animation(.spring(response: 0.3, dampingFraction: 0.6), value: selectedTab)
+            }
+            .frame(maxWidth: .infinity)
+            
+            // Favorites 按钮
+            Button(action: {
+                selectedTab = 3
+                showingFavoritesSheet = true
+            }) {
+                VStack(spacing: 4) {
+                    ZStack {
+                        Circle()
+                            .fill(selectedTab == 3 ? Color.red.opacity(0.2) : Color.clear)
+                            .frame(width: 45, height: 45)
+                        
+                        Image(systemName: selectedTab == 3 ? "heart.fill" : "heart")
+                            .font(.system(size: 24))
+                            .foregroundColor(selectedTab == 3 ? .red : .gray)
+                    }
+                    
+                    Text("Favorites")
+                        .font(.caption2)
+                        .foregroundColor(selectedTab == 3 ? .red : .gray)
+                }
             }
             .frame(maxWidth: .infinity)
             
             // Me 按钮
             Button(action: {
-                selectedTab = 2
+                selectedTab = 4
                 showingProfileSheet = true
             }) {
                 VStack(spacing: 4) {
                     ZStack {
                         Circle()
-                            .fill(selectedTab == 2 ? Color.pink.opacity(0.2) : Color.clear)
-                            .frame(width: 50, height: 50)
+                            .fill(selectedTab == 4 ? Color.pink.opacity(0.2) : Color.clear)
+                            .frame(width: 45, height: 45)
                         
-                        Image(systemName: selectedTab == 2 ? "person.circle.fill" : "person.circle")
-                            .font(.system(size: 28))
-                            .foregroundColor(selectedTab == 2 ? .pink : .gray)
+                        Image(systemName: selectedTab == 4 ? "person.circle.fill" : "person.circle")
+                            .font(.system(size: 24))
+                            .foregroundColor(selectedTab == 4 ? .pink : .gray)
                             .overlay(
                                 Image(systemName: "pawprint.fill")
                                     .font(.system(size: 8))
-                                    .foregroundColor(selectedTab == 2 ? .pink : .gray)
+                                    .foregroundColor(selectedTab == 4 ? .pink : .gray)
                                     .offset(x: 12, y: -12)
                             )
                     }
                     
                     Text("Me")
                         .font(.caption2)
-                        .foregroundColor(selectedTab == 2 ? .pink : .gray)
+                        .foregroundColor(selectedTab == 4 ? .pink : .gray)
                 }
             }
             .frame(maxWidth: .infinity)
@@ -254,13 +341,38 @@ struct BottomNavigationBar: View {
         .padding(.horizontal, 16)
         .padding(.bottom, 34) // 为安全区域留出空间
         .sheet(isPresented: $showingFavoritesSheet) {
-            FavoritesListView()
-                .environmentObject(userManager)
+            FavoritesView()
+                .environmentObject(authViewModel)
                 .environmentObject(placesManager)
         }
         .sheet(isPresented: $showingProfileSheet) {
             ProfileView()
-                .environmentObject(userManager)
+                .environmentObject(authViewModel)
+        }
+        .sheet(isPresented: $showingTopPicksSheet) {
+            TopPicksView()
+                .environmentObject(locationManager)
+        }
+        .onAppear {
+            // Request location permission when app starts
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                locationManager.requestLocationPermission()
+            }
+        }
+        .alert("Location Access Required", isPresented: $showingLocationPermissionAlert) {
+            Button("Settings") {
+                if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(settingsUrl)
+                }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("PawMap needs access to your location to show nearby dog-friendly places. Please enable location access in Settings.")
+        }
+        .onChange(of: locationManager.authorizationStatus) { _, status in
+            if status == .denied || status == .restricted {
+                showingLocationPermissionAlert = true
+            }
         }
     }
 }
