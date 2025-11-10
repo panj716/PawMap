@@ -9,8 +9,8 @@ class LocationManager: NSObject, ObservableObject {
     
     @Published var location: CLLocation?
     @Published var region = MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 42.7325, longitude: -84.5555), // Lansing, Michigan - State Capital
-        span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5) // Wider view to show more of Michigan
+        center: CLLocationCoordinate2D(latitude: 42.2464, longitude: -83.7417), // Ann Arbor, Michigan - User's location
+        span: MKCoordinateSpan(latitudeDelta: 0.3, longitudeDelta: 0.3) // Focused view on Ann Arbor areachig vi
     )
     @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
     @Published var isLoading = false
@@ -19,8 +19,8 @@ class LocationManager: NSObject, ObservableObject {
     @Published var isFollowingUser = false
     @Published var mapCameraPosition = MapCameraPosition.region(
         MKCoordinateRegion(
-            center: CLLocationCoordinate2D(latitude: 42.7325, longitude: -84.5555), // Lansing, Michigan - State Capital
-            span: MKCoordinateSpan(latitudeDelta: 0.5, longitudeDelta: 0.5) // Wider view to show more of Michigan
+            center: CLLocationCoordinate2D(latitude: 42.2464, longitude: -83.7417), // Ann Arbor, Michigan - User's location
+            span: MKCoordinateSpan(latitudeDelta: 0.3, longitudeDelta: 0.3) // Focused view on Ann Arbor area
         )
     )
     
@@ -35,6 +35,12 @@ class LocationManager: NSObject, ObservableObject {
         // Check current authorization status
         authorizationStatus = locationManager.authorizationStatus
         
+        
+        // Request permission immediately when app starts
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            self.requestLocationPermission()
+        }
+        
         // Auto-start location updates if permission is already granted
         if authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways {
             startLocationUpdates()
@@ -44,24 +50,42 @@ class LocationManager: NSObject, ObservableObject {
     func requestLocationPermission() {
         hasHandledPermissionPrompt = true
         
+        print("Requesting location permission...")
+        
         // Check if we already have permission
         if authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways {
+            print("Location already authorized, starting updates")
             startLocationUpdates()
             return
         }
         
+        // Check if location services are enabled
+        guard CLLocationManager.locationServicesEnabled() else {
+            print("Location services are disabled")
+            return
+        }
+        
         // Request permission
+        print("Requesting when-in-use authorization")
         locationManager.requestWhenInUseAuthorization()
     }
     
     func startLocationUpdates() {
         guard authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways else {
+            print("Location not authorized, requesting permission")
             requestLocationPermission()
             return
         }
         
+        guard CLLocationManager.locationServicesEnabled() else {
+            print("Location services disabled")
+            return
+        }
+        
+        print("Starting location updates...")
         isLoading = true
         locationManager.startUpdatingLocation()
+        locationManager.requestLocation() // Request immediate location update
     }
     
     func stopLocationUpdates() {
@@ -217,7 +241,7 @@ extension LocationManager: CLLocationManagerDelegate {
             
             switch status {
             case .authorizedWhenInUse, .authorizedAlways:
-                print("Location authorized, starting location updates")
+                print("Location authorized, starting location updates immediately")
                 self.startLocationUpdates()
                 // Automatically start following user location when permission is granted
                 self.startFollowingUser()
@@ -225,7 +249,13 @@ extension LocationManager: CLLocationManagerDelegate {
                 print("Location access denied or restricted")
                 self.isLoading = false
             case .notDetermined:
-                print("Location permission not determined")
+                print("Location permission not determined - requesting again")
+                // Try requesting permission again if not determined
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    if self.authorizationStatus == .notDetermined {
+                        self.locationManager.requestWhenInUseAuthorization()
+                    }
+                }
             @unknown default:
                 print("Unknown location authorization status")
             }

@@ -6,6 +6,18 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		D5E73E212EA45E6B0059C19B /* FirebaseAI in Frameworks */ = {isa = PBXBuildFile; productRef = D5E73E202EA45E6B0059C19B /* FirebaseAI */; };
+		D5E73E232EA45E6B0059C19B /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = D5E73E222EA45E6B0059C19B /* FirebaseAnalytics */; };
+		D5E73E252EA45E6B0059C19B /* FirebaseAnalyticsCore in Frameworks */ = {isa = PBXBuildFile; productRef = D5E73E242EA45E6B0059C19B /* FirebaseAnalyticsCore */; };
+		D5E73E272EA45E6B0059C19B /* FirebaseAnalyticsIdentitySupport in Frameworks */ = {isa = PBXBuildFile; productRef = D5E73E262EA45E6B0059C19B /* FirebaseAnalyticsIdentitySupport */; };
+		D5E73E292EA45E6B0059C19B /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = D5E73E282EA45E6B0059C19B /* FirebaseAppCheck */; };
+		D5E73E452EA465610059C19B /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = D5E73E442EA465610059C19B /* FirebaseAuth */; };
+		D5E73E472EA465610059C19B /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = D5E73E462EA465610059C19B /* FirebaseCore */; };
+		D5E73E492EA465610059C19B /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = D5E73E482EA465610059C19B /* FirebaseFirestore */; };
+		D5E73E4B2EA465610059C19B /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = D5E73E4A2EA465610059C19B /* FirebaseStorage */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		D56AD7A52E6A4C3A00103E54 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -29,9 +41,22 @@
 		D56AD7AE2E6A4C3A00103E54 /* PawMapUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PawMapUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		D5E73E432EA463C40059C19B /* Exceptions for "PawMap" folder in "PawMapUITests" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"GoogleService-Info.plist",
+			);
+			target = D56AD7AD2E6A4C3A00103E54 /* PawMapUITests */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		D56AD7992E6A4C3900103E54 /* PawMap */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				D5E73E432EA463C40059C19B /* Exceptions for "PawMap" folder in "PawMapUITests" target */,
+			);
 			path = PawMap;
 			sourceTree = "<group>";
 		};
@@ -52,6 +77,15 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D5E73E272EA45E6B0059C19B /* FirebaseAnalyticsIdentitySupport in Frameworks */,
+				D5E73E452EA465610059C19B /* FirebaseAuth in Frameworks */,
+				D5E73E4B2EA465610059C19B /* FirebaseStorage in Frameworks */,
+				D5E73E232EA45E6B0059C19B /* FirebaseAnalytics in Frameworks */,
+				D5E73E252EA45E6B0059C19B /* FirebaseAnalyticsCore in Frameworks */,
+				D5E73E472EA465610059C19B /* FirebaseCore in Frameworks */,
+				D5E73E492EA465610059C19B /* FirebaseFirestore in Frameworks */,
+				D5E73E292EA45E6B0059C19B /* FirebaseAppCheck in Frameworks */,
+				D5E73E212EA45E6B0059C19B /* FirebaseAI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +146,15 @@
 			);
 			name = PawMap;
 			packageProductDependencies = (
+				D5E73E202EA45E6B0059C19B /* FirebaseAI */,
+				D5E73E222EA45E6B0059C19B /* FirebaseAnalytics */,
+				D5E73E242EA45E6B0059C19B /* FirebaseAnalyticsCore */,
+				D5E73E262EA45E6B0059C19B /* FirebaseAnalyticsIdentitySupport */,
+				D5E73E282EA45E6B0059C19B /* FirebaseAppCheck */,
+				D5E73E442EA465610059C19B /* FirebaseAuth */,
+				D5E73E462EA465610059C19B /* FirebaseCore */,
+				D5E73E482EA465610059C19B /* FirebaseFirestore */,
+				D5E73E4A2EA465610059C19B /* FirebaseStorage */,
 			);
 			productName = PawMap;
 			productReference = D56AD7972E6A4C3900103E54 /* PawMap.app */;
@@ -195,6 +238,9 @@
 			);
 			mainGroup = D56AD78E2E6A4C3900103E54;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				D5E73E1F2EA45E6B0059C19B /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = D56AD7982E6A4C3900103E54 /* Products */;
 			projectDirPath = "";
@@ -399,6 +445,8 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "PawMap needs access to your location to show nearby dog-friendly places and help you find the best spots for you and your furry friend.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "PawMap needs access to your location to show nearby dog-friendly places and help you find the best spots for you and your furry friend.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "PawMap needs access to save photos to your library when you share pictures of dog-friendly places.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "PawMap needs access to your photo library so you can add photos of your dog and share pictures of dog-friendly places.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -428,6 +476,8 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "PawMap needs access to your location to show nearby dog-friendly places and help you find the best spots for you and your furry friend.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "PawMap needs access to your location to show nearby dog-friendly places and help you find the best spots for you and your furry friend.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "PawMap needs access to save photos to your library when you share pictures of dog-friendly places.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "PawMap needs access to your photo library so you can add photos of your dog and share pictures of dog-friendly places.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -554,6 +604,65 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		D5E73E1F2EA45E6B0059C19B /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.4.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		D5E73E202EA45E6B0059C19B /* FirebaseAI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D5E73E1F2EA45E6B0059C19B /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAI;
+		};
+		D5E73E222EA45E6B0059C19B /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D5E73E1F2EA45E6B0059C19B /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
+		D5E73E242EA45E6B0059C19B /* FirebaseAnalyticsCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D5E73E1F2EA45E6B0059C19B /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalyticsCore;
+		};
+		D5E73E262EA45E6B0059C19B /* FirebaseAnalyticsIdentitySupport */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D5E73E1F2EA45E6B0059C19B /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalyticsIdentitySupport;
+		};
+		D5E73E282EA45E6B0059C19B /* FirebaseAppCheck */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D5E73E1F2EA45E6B0059C19B /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAppCheck;
+		};
+		D5E73E442EA465610059C19B /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D5E73E1F2EA45E6B0059C19B /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		D5E73E462EA465610059C19B /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D5E73E1F2EA45E6B0059C19B /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		D5E73E482EA465610059C19B /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D5E73E1F2EA45E6B0059C19B /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		D5E73E4A2EA465610059C19B /* FirebaseStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D5E73E1F2EA45E6B0059C19B /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseStorage;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = D56AD78F2E6A4C3900103E54 /* Project object */;
 }

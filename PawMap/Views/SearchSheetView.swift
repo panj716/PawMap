@@ -18,7 +18,7 @@ struct SearchSheetView: View {
                     
                     TextField("搜索地点、地址或标签...", text: $searchText)
                         .textFieldStyle(PlainTextFieldStyle())
-                        .onChange(of: searchText) { newValue in
+                        .onChange(of: searchText) { _, newValue in
                             performSearch(query: newValue)
                         }
                     
@@ -219,7 +219,7 @@ struct SearchResultRow: View {
         }
         .buttonStyle(PlainButtonStyle())
         .sheet(isPresented: $showingDetail) {
-            ModernPlaceDetailView(place: place)
+            PlaceDetailView(place: place)
         }
     }
 }
