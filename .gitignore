@@ -1,0 +1,14 @@
+# Xcode build folders
+build/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+
+# Binaries and archives
+*.xcarchive
+*.framework
+*.db
+*.zip
+*.tar
+*.gz
+*.dSYM
