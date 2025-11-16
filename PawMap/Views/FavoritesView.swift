@@ -93,28 +93,51 @@ struct FavoritesView: View {
             if favoritePlaces.isEmpty {
                 EmptyFavoritesView()
             } else {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Your Favorites")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .padding(.horizontal, 20)
-                    
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 16) {
-                            ForEach(favoritePlaces) { place in
-                                FavoritePlaceCard(place: place)
-                                    .onTapGesture {
-                                        selectedPlace = place
+                ScrollView(showsIndicators: true) {
+                    VStack(alignment: .leading, spacing: 24) {
+                        // Horizontal featured favorites
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Your Favorites")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .padding(.horizontal, 20)
+                            
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 16) {
+                                    ForEach(favoritePlaces) { place in
+                                        FavoritePlaceCard(place: place)
+                                            .onTapGesture {
+                                                selectedPlace = place
+                                            }
                                     }
+                                }
+                                .padding(.horizontal, 20)
                             }
                         }
-                        .padding(.horizontal, 20)
+                        .padding(.top, 20)
+                        
+                        // Vertical list of all favorites
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("All Favorites")
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                                .padding(.horizontal, 20)
+                            
+                            LazyVStack(spacing: 8) {
+                                ForEach(favoritePlaces) { place in
+                                    FavoritePlaceRow(place: place)
+                                        .padding(.horizontal, 20)
+                                        .onTapGesture {
+                                            selectedPlace = place
+                                        }
+                                }
+                            }
+                        }
+                        .padding(.top, 8)
+                        .padding(.bottom, 20)
                     }
                 }
-                .padding(.top, 20)
             }
-            
-            Spacer()
         }
         .sheet(item: $selectedPlace) { place in
             PlaceDetailView(place: place)

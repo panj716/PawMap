@@ -9,12 +9,9 @@ struct CuratedPlaceDetailView: View {
     
     init(place: CuratedPlace) {
         self.place = place
-        // 使用统一的缩放级别，确保所有地点都使用相同的缩放比例
-        // latitudeDelta 和 longitudeDelta 越大，地图显示的范围越大（zoom out）
-        // 使用 0.05 可以获得一个适中的视图，显示地点及其周围区域
         self._region = State(initialValue: MKCoordinateRegion(
             center: CLLocationCoordinate2D(latitude: place.latitude, longitude: place.longitude),
-            span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+            span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
         ))
     }
     
