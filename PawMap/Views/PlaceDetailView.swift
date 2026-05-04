@@ -15,7 +15,6 @@ struct PlaceDetailView: View {
         NavigationView {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    // 地点名称和类型
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
                             Text(place.name)
@@ -35,14 +34,13 @@ struct PlaceDetailView: View {
                         
                         HStack {
                             Image(systemName: place.type.iconName)
-                                .foregroundColor(Color(place.type.color))
+                                .foregroundColor(placeColor(for: place.type))
                             Text(place.type.displayName)
                                 .font(.headline)
-                                .foregroundColor(Color(place.type.color))
+                                .foregroundColor(placeColor(for: place.type))
                         }
                     }
                     
-                    // 评分
                     HStack {
                         HStack(spacing: 2) {
                             ForEach(0..<5) { index in
@@ -52,12 +50,11 @@ struct PlaceDetailView: View {
                         }
                         Text(String(format: "%.1f", place.rating))
                             .font(.headline)
-                        Text("(0 评价)") // TODO: Load reviews from Firebase
+                        Text("(0 reviews)") // TODO: Load reviews from Firebase
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                     
-                    // 地址
                     HStack {
                         Image(systemName: "location")
                             .foregroundColor(.gray)
@@ -65,32 +62,11 @@ struct PlaceDetailView: View {
                             .font(.body)
                     }
                     
-                    // 标签
-                    if !place.tags.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("设施")
-                                .font(.headline)
-                            
-                            LazyVGrid(columns: [
-                                GridItem(.adaptive(minimum: 80))
-                            ], spacing: 8) {
-                                ForEach(place.tags, id: \.self) { tag in
-                                    Text(tag)
-                                        .font(.caption)
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 4)
-                                        .background(Color.blue.opacity(0.1))
-                                        .foregroundColor(.blue)
-                                        .cornerRadius(8)
-                                }
-                            }
-                        }
-                    }
+                    PlaceTagChipsSection(tags: place.tags, sectionTitle: "Tags", cardStyle: false)
                     
-                    // 描述
                     if !place.notes.isEmpty {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("描述")
+                            Text("Description")
                                 .font(.headline)
                             Text(place.notes)
                                 .font(.body)
@@ -98,15 +74,14 @@ struct PlaceDetailView: View {
                         }
                     }
                     
-                    // 评价
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
-                            Text("评价")
+                            Text("Reviews")
                                 .font(.headline)
                             
                             Spacer()
                             
-                            Button("添加评价") {
+                            Button("Add review") {
                                 showingAddReview = true
                             }
                             .font(.caption)
@@ -114,7 +89,7 @@ struct PlaceDetailView: View {
                         }
                         
                         if true { // place.reviews.isEmpty { // TODO: Load reviews from Firebase
-                            Text("暂无评价")
+                            Text("No reviews yet")
                                 .font(.body)
                                 .foregroundColor(.secondary)
                                 .italic()
@@ -125,14 +100,13 @@ struct PlaceDetailView: View {
                         }
                     }
                     
-                    // 操作按钮
                     VStack(spacing: 12) {
                         Button(action: {
                             openInMaps()
                         }) {
                             HStack {
                                 Image(systemName: "map")
-                                Text("获取路线")
+                                Text("Open in Maps")
                             }
                             .frame(maxWidth: .infinity)
                             .padding()
@@ -147,7 +121,7 @@ struct PlaceDetailView: View {
                             }) {
                                 HStack {
                                     Image(systemName: "star")
-                                    Text("添加评价")
+                                    Text("Add review")
                                 }
                                 .frame(maxWidth: .infinity)
                                 .padding()
@@ -160,11 +134,11 @@ struct PlaceDetailView: View {
                 }
                 .padding()
             }
-            .navigationTitle("地点详情")
+            .navigationTitle("Place")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("完成") {
+                    Button("Done") {
                         dismiss()
                     }
                 }
@@ -185,6 +159,80 @@ struct PlaceDetailView: View {
     }
 }
 
+/// Tag chips for place detail (full screen or map card).
+struct PlaceTagChipsSection: View {
+    let tags: [String]
+    var sectionTitle: String = "Tags"
+    var cardStyle: Bool = false
+    
+    var body: some View {
+        Group {
+            if !tags.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(sectionTitle)
+                        .font(cardStyle ? .system(size: 15, weight: .bold, design: .rounded) : .headline)
+                        .foregroundColor(cardStyle ? Color(red: 0.2, green: 0.2, blue: 0.2) : .primary)
+                    
+                    LazyVGrid(
+                        columns: [GridItem(.adaptive(minimum: cardStyle ? 88 : 100), spacing: 8)],
+                        alignment: .leading,
+                        spacing: 8
+                    ) {
+                        ForEach(tags, id: \.self) { raw in
+                            Text(Place.displayLabel(forTag: raw))
+                                .font(.system(size: cardStyle ? 11 : 12, weight: .semibold, design: .rounded))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 7)
+                                .background(chipBackground(for: raw))
+                                .foregroundColor(chipForeground(for: raw))
+                                .clipShape(Capsule())
+                                .overlay(
+                                    Capsule()
+                                        .strokeBorder(chipStroke(for: raw), lineWidth: raw == "needsReview" ? 1 : 0)
+                                )
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    private func chipBackground(for raw: String) -> Color {
+        if raw == "needsReview" {
+            return Color.orange.opacity(cardStyle ? 0.22 : 0.18)
+        }
+        if cardStyle {
+            return Color(red: 1.0, green: 0.7, blue: 0.4).opacity(0.2)
+        }
+        return Color.blue.opacity(0.12)
+    }
+    
+    private func chipForeground(for raw: String) -> Color {
+        if raw == "needsReview" { return .orange }
+        if cardStyle {
+            return Color(red: 0.35, green: 0.25, blue: 0.22)
+        }
+        return Color.blue.opacity(0.95)
+    }
+    
+    private func chipStroke(for raw: String) -> Color {
+        raw == "needsReview" ? Color.orange.opacity(0.6) : .clear
+    }
+}
+
+private func placeColor(for type: Place.PlaceType) -> Color {
+    switch type {
+    case .coffee: return .orange
+    case .trail: return .green
+    case .park: return .blue
+    case .beach: return .cyan
+    case .shop: return .purple
+    case .camp: return .brown
+    case .restaurant: return .red
+    case .other: return .gray
+    }
+}
+
 
 #Preview {
     PlaceDetailView(place: Place(
@@ -194,8 +242,8 @@ struct PlaceDetailView: View {
         latitude: 42.3389,
         longitude: -82.9967,
         rating: 4.5,
-        tags: ["户外", "大空间", "水边"],
-        notes: "美丽的岛屿公园，有专门的狗狗区域",
+        tags: ["Outdoor", "Spacious", "Waterfront"],
+        notes: "Scenic island park with a dedicated dog area.",
         createdBy: "system"
     ))
     .environmentObject(UserManager())

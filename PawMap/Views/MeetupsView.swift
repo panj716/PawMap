@@ -17,15 +17,15 @@ struct MeetupsView: View {
                     .foregroundColor(.orange)
                 
                 VStack(spacing: 16) {
-                    Text("狗狗聚会")
+                    Text("Dog meetups")
                         .font(.largeTitle)
                         .fontWeight(.bold)
                     
-                    Text("即将推出！")
+                    Text("Coming soon!")
                         .font(.title2)
                         .foregroundColor(.secondary)
                     
-                    Text("与附近的狗狗主人组织聚会，让您的狗狗结交新朋友")
+                    Text("Organize meetups with nearby dog parents so your pup can make friends")
                         .font(.body)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -37,7 +37,7 @@ struct MeetupsView: View {
                 }) {
                     HStack {
                         Image(systemName: "plus")
-                        Text("创建聚会")
+                        Text("Create meetup")
                     }
                     .font(.headline)
                     .foregroundColor(.white)
@@ -49,7 +49,7 @@ struct MeetupsView: View {
                 Spacer()
             }
             .padding()
-            .navigationTitle("聚会")
+            .navigationTitle("Meetups")
         }
         .sheet(isPresented: $showingCreateMeetup) {
             CreateMeetupView()
@@ -71,33 +71,33 @@ struct CreateMeetupView: View {
     var body: some View {
         NavigationView {
             Form {
-                Section("聚会信息") {
-                    TextField("聚会标题", text: $title)
-                    TextField("地点", text: $location)
-                    DatePicker("日期", selection: $selectedDate, displayedComponents: .date)
-                    TextField("时间 (例如: 下午2点)", text: $time)
+                Section("Meetup details") {
+                    TextField("Title", text: $title)
+                    TextField("Location", text: $location)
+                    DatePicker("Date", selection: $selectedDate, displayedComponents: .date)
+                    TextField("Time (e.g. 2:00 PM)", text: $time)
                 }
                 
-                Section("狗狗信息") {
-                    TextField("狗狗品种", text: $dogBreed)
+                Section("Dog info") {
+                    TextField("Dog breed", text: $dogBreed)
                 }
                 
-                Section("备注") {
-                    TextField("其他信息...", text: $notes, axis: .vertical)
+                Section("Notes") {
+                    TextField("Other details…", text: $notes, axis: .vertical)
                         .lineLimit(3...6)
                 }
             }
-            .navigationTitle("创建聚会")
+            .navigationTitle("New meetup")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("取消") {
+                    Button("Cancel") {
                         dismiss()
                     }
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("创建") {
+                    Button("Create") {
                         createMeetup()
                     }
                     .disabled(title.isEmpty || location.isEmpty)
@@ -107,8 +107,6 @@ struct CreateMeetupView: View {
     }
     
     private func createMeetup() {
-        // 这里会创建聚会并保存
-        // 目前只是演示功能
         dismiss()
     }
 }

@@ -47,7 +47,7 @@ struct MapView: View {
             
             if locationManager.isLoading {
                 VStack {
-                    ProgressView("正在获取位置...")
+                    ProgressView("Getting location…")
                         .padding()
                         .background(Color.white.opacity(0.8))
                         .cornerRadius(10)
@@ -73,7 +73,7 @@ struct PlaceAnnotationView: View {
         VStack(spacing: 0) {
             ZStack {
                 Circle()
-                    .fill(Color(place.type.color))
+                    .fill(placeColor(for: place.type))
                     .frame(width: 30, height: 30)
                 
                 Image(systemName: place.type.iconName)
@@ -81,7 +81,7 @@ struct PlaceAnnotationView: View {
                     .font(.system(size: 14, weight: .medium))
             }
             
-            // 收藏标记
+            // Favorite marker
             if userManager.isFavorite(placeId: place.id) {
                 Image(systemName: "heart.fill")
                     .foregroundColor(.red)
@@ -89,8 +89,21 @@ struct PlaceAnnotationView: View {
                     .offset(y: -5)
             }
             
-            // 自动加载标记 (removed - not in current Place model)
+            // Auto-loaded markers (removed)
         }
+    }
+}
+
+private func placeColor(for type: Place.PlaceType) -> Color {
+    switch type {
+    case .coffee: return .orange
+    case .trail: return .green
+    case .park: return .blue
+    case .beach: return .cyan
+    case .shop: return .purple
+    case .camp: return .brown
+    case .restaurant: return .red
+    case .other: return .gray
     }
 }
 

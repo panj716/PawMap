@@ -25,14 +25,14 @@ struct CategoryPlacesListView: View {
                         .font(.system(size: 24, weight: .bold, design: .rounded))
                         .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.2))
                     
-                    Text("\(places.count) 个地点")
+                    Text("\(places.count) places")
                         .font(.system(size: 15, weight: .regular, design: .rounded))
                         .foregroundColor(Color.gray.opacity(0.7))
                 }
                 
                 Spacer()
                 
-                Button("关闭") {
+                Button("Close") {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                         isPresented = false
                     }
@@ -60,11 +60,11 @@ struct CategoryPlacesListView: View {
                             )
                         )
                     
-                    Text("附近没有\(category.displayName)")
+                    Text("No \(category.displayName) nearby")
                         .font(.system(size: 18, weight: .semibold, design: .rounded))
                         .foregroundColor(Color(red: 0.3, green: 0.3, blue: 0.3))
                     
-                    Text("尝试扩大搜索范围或选择其他分类")
+                    Text("Try zooming out or pick another category")
                         .font(.system(size: 15, weight: .regular, design: .rounded))
                         .foregroundColor(Color.gray.opacity(0.7))
                         .multilineTextAlignment(.center)
@@ -229,7 +229,7 @@ struct RoundedCorner: Shape {
         places: [
             Place(
                 id: "1",
-                name: "星巴克",
+                name: "Starbucks",
                 type: .coffee,
                 address: "123 Main St, Ann Arbor, MI",
                 latitude: 42.2796,

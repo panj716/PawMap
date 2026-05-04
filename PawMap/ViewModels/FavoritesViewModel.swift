@@ -58,10 +58,10 @@ class FavoritesViewModel: ObservableObject {
             return
         }
         
-        firebaseService.queryDocuments(
+        firebaseService.fetchDocumentsByIds(
             Place.self,
             from: "places",
-            where: [("id", .in, placeIds)]
+            ids: placeIds
         )
         .receive(on: DispatchQueue.main)
         .sink(

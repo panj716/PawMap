@@ -71,16 +71,50 @@ struct ModernPlaceAnnotation: View {
     }
 }
 
+/// Map pin for curated “dog-friendly district” entries (teal, distinct from single-place pins).
+private struct CuratedDogFriendlyDistrictMapPin: View {
+    private let pinColor = Color(red: 0.18, green: 0.68, blue: 0.62)
+    
+    var body: some View {
+        VStack(spacing: 2) {
+            ZStack {
+                Circle()
+                    .fill(pinColor)
+                    .frame(width: 48, height: 48)
+                    .overlay(
+                        Circle()
+                            .stroke(Color.white, lineWidth: 3)
+                    )
+                    .shadow(color: .black.opacity(0.32), radius: 4, x: 0, y: 2)
+                Image(systemName: "building.2.fill")
+                    .foregroundColor(.white)
+                    .font(.system(size: 17, weight: .bold))
+                Image(systemName: "pawprint.fill")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(.white.opacity(0.95))
+                    .offset(x: 12, y: 12)
+            }
+            Text("District")
+                .font(.system(size: 9, weight: .heavy))
+                .foregroundColor(pinColor)
+        }
+    }
+}
+
 struct ModernMapView: View {
     @EnvironmentObject var locationManager: LocationManager
-    @EnvironmentObject var placesManager: PlacesManager
+    @EnvironmentObject var placeViewModel: PlaceViewModel  // Changed from PlacesManager to PlaceViewModel
     @EnvironmentObject var userManager: UserManager
+    @ObservedObject private var curatedPlacesManager = CuratedPlacesManager.shared
     
     @State private var selectedFilter: Place.PlaceType?
     @State private var selectedPlace: Place?
     @State private var showingPlaceDetail = false
+    @State private var selectedCuratedPlace: CuratedPlace?
     @State private var showingCategoryList = false
-    @State private var searchText = ""
+    @State private var zipcodeText = ""
+    @State private var zipcodeErrorMessage: String?
+    @State private var showingZipcodeResults = false
     @State private var showingWeather = true
     @State private var isUserInteracting = false
     @State private var lastZoomLevel: Double = 0.3
@@ -90,12 +124,13 @@ struct ModernMapView: View {
     @State private var temperature = 72
     
     var filteredPlaces: [Place] {
-        let places = if let filter = selectedFilter {
-            placesManager.places.filter { $0.type == filter }
-        } else {
-            placesManager.places
-        }
-        return places
+        // Use placeViewModel.filteredPlaces which comes from Firebase
+        // This will automatically update when new places are added to Firebase
+        return placeViewModel.filteredPlaces
+    }
+    
+    private var dogFriendlyDistrictPins: [CuratedPlace] {
+        curatedPlacesManager.curatedPlaces.filter { $0.type == .dogFriendlyDistrict }
     }
     
     var body: some View {
@@ -103,8 +138,7 @@ struct ModernMapView: View {
             // Map Background
             if #available(iOS 17.0, *) {
                 Map(position: $locationManager.mapCameraPosition, interactionModes: .all) {
-                    UserAnnotation()
-                    
+                    // Places render in the lower map overlay level so dog-friendly district pins can sit on top.
                     ForEach(filteredPlaces) { place in
                         Annotation(place.name, coordinate: place.coordinate) {
                             Button(action: {
@@ -116,10 +150,31 @@ struct ModernMapView: View {
                             .padding(8) // Increase tap area
                         }
                         .tag(place.id)
+                        .mapOverlayLevel(level: .aboveRoads)
+                    }
+                    ForEach(dogFriendlyDistrictPins) { curated in
+                        Annotation(curated.name, coordinate: curated.coordinate) {
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.25)) {
+                                    selectedPlace = nil
+                                    showingPlaceDetail = false
+                                }
+                                selectedCuratedPlace = curated
+                            } label: {
+                                CuratedDogFriendlyDistrictMapPin()
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .padding(8)
+                        }
+                        .tag("curated-\(curated.id)")
+                        .mapOverlayLevel(level: .aboveLabels)
                     }
                 }
                 .mapStyle(.standard(elevation: .realistic))
                 .tint(.green)
+                .onAppear {
+                    fitCuratedDistrictPinsIfNearCurrentView()
+                }
                 .onMapCameraChange { context in
                     let currentZoom = context.region.span.latitudeDelta
                     let zoomChanged = abs(currentZoom - lastZoomLevel) > 0.001
@@ -179,9 +234,21 @@ struct ModernMapView: View {
                             .foregroundColor(.gray.opacity(0.6))
                             .font(.system(size: 14))
                         
-                        TextField("搜索狗狗友好的地方...", text: $searchText)
+                        TextField("Enter ZIP code (e.g. 10001)", text: $zipcodeText)
                             .font(.system(size: 15, weight: .regular, design: .rounded))
                             .foregroundColor(.primary)
+                            .keyboardType(.numberPad)
+                            .onSubmit {
+                                searchByZipcode()
+                            }
+                        
+                        Button(action: {
+                            searchByZipcode()
+                        }) {
+                            Text("Go")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(.pink)
+                        }
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
@@ -192,6 +259,15 @@ struct ModernMapView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 60)
                 .background(Color(red: 0.98, green: 0.96, blue: 0.88).opacity(0.95))
+
+                if let zipcodeErrorMessage {
+                    Text(zipcodeErrorMessage)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.red)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 6)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
                 
                 // Filter Toggles
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -203,6 +279,7 @@ struct ModernMapView: View {
                             action: { 
                                 let newFilter: Place.PlaceType? = selectedFilter == .coffee ? nil : .coffee
                                 selectedFilter = newFilter
+                                placeViewModel.setFilter(newFilter) // Sync with PlaceViewModel
                                 if newFilter != nil {
                                     withAnimation(.spring()) {
                                         showingCategoryList = true
@@ -222,6 +299,7 @@ struct ModernMapView: View {
                             action: { 
                                 let newFilter: Place.PlaceType? = selectedFilter == .park ? nil : .park
                                 selectedFilter = newFilter
+                                placeViewModel.setFilter(newFilter) // Sync with PlaceViewModel
                                 if newFilter != nil {
                                     withAnimation(.spring()) {
                                         showingCategoryList = true
@@ -241,6 +319,7 @@ struct ModernMapView: View {
                             action: { 
                                 let newFilter: Place.PlaceType? = selectedFilter == .trail ? nil : .trail
                                 selectedFilter = newFilter
+                                placeViewModel.setFilter(newFilter) // Sync with PlaceViewModel
                                 if newFilter != nil {
                                     withAnimation(.spring()) {
                                         showingCategoryList = true
@@ -260,6 +339,7 @@ struct ModernMapView: View {
                             action: { 
                                 let newFilter: Place.PlaceType? = selectedFilter == .camp ? nil : .camp
                                 selectedFilter = newFilter
+                                placeViewModel.setFilter(newFilter) // Sync with PlaceViewModel
                                 if newFilter != nil {
                                     withAnimation(.spring()) {
                                         showingCategoryList = true
@@ -274,11 +354,12 @@ struct ModernMapView: View {
                         
                         FilterToggle(
                             title: "Beaches",
-                            icon: "umbrella.beach.fill",
+                            icon: "beach.umbrella.fill",
                             isSelected: selectedFilter == .beach,
                             action: { 
                                 let newFilter: Place.PlaceType? = selectedFilter == .beach ? nil : .beach
                                 selectedFilter = newFilter
+                                placeViewModel.setFilter(newFilter) // Sync with PlaceViewModel
                                 if newFilter != nil {
                                     withAnimation(.spring()) {
                                         showingCategoryList = true
@@ -298,6 +379,7 @@ struct ModernMapView: View {
                             action: { 
                                 let newFilter: Place.PlaceType? = selectedFilter == .restaurant ? nil : .restaurant
                                 selectedFilter = newFilter
+                                placeViewModel.setFilter(newFilter) // Sync with PlaceViewModel
                                 if newFilter != nil {
                                     withAnimation(.spring()) {
                                         showingCategoryList = true
@@ -317,6 +399,7 @@ struct ModernMapView: View {
                             action: { 
                                 let newFilter: Place.PlaceType? = selectedFilter == .other ? nil : .other
                                 selectedFilter = newFilter
+                                placeViewModel.setFilter(newFilter) // Sync with PlaceViewModel
                                 if newFilter != nil {
                                     withAnimation(.spring()) {
                                         showingCategoryList = true
@@ -337,8 +420,35 @@ struct ModernMapView: View {
                 
                 Spacer()
                 
-                // Weather Widget and Location Button (Bottom Left - Instagram Style)
+                // Weather + dog-friendly district map controls (Bottom Left)
                 VStack(spacing: 12) {
+                    if !dogFriendlyDistrictPins.isEmpty {
+                        Button {
+                            fitMapToAllCuratedDogDistricts()
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "building.2.fill")
+                                    .font(.system(size: 15, weight: .bold))
+                                    .foregroundColor(Color(red: 0.12, green: 0.55, blue: 0.5))
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text("Dog-friendly districts")
+                                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                    Text("Teal pins — tap to zoom")
+                                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer(minLength: 0)
+                            }
+                            .foregroundColor(Color(red: 0.2, green: 0.2, blue: 0.22))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .frame(maxWidth: 220)
+                            .background(Color.white)
+                            .cornerRadius(14)
+                            .shadow(color: Color(red: 0.18, green: 0.68, blue: 0.62).opacity(0.35), radius: 10, x: 0, y: 3)
+                        }
+                        .buttonStyle(.plain)
+                    }
                     if showingWeather {
                         VStack(alignment: .leading, spacing: 6) {
                             HStack(spacing: 8) {
@@ -365,43 +475,6 @@ struct ModernMapView: View {
                         .padding(.vertical, 10)
                         .background(Color.white)
                         .cornerRadius(16)
-                        .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
-                    }
-                    
-                    // Location Button (Instagram Style)
-                    Button(action: {
-                        print("Location button tapped")
-                        locationManager.centerOnUserLocation()
-                    }) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "location.fill")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundStyle(
-                                    LinearGradient(
-                                        colors: [Color(red: 0.4, green: 0.7, blue: 1.0), Color(red: 0.6, green: 0.4, blue: 1.0)],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
-                                )
-                            Text("我的位置")
-                                .font(.system(size: 14, weight: .semibold, design: .rounded))
-                                .foregroundColor(Color(red: 0.4, green: 0.7, blue: 1.0))
-                        }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(Color.white)
-                        .cornerRadius(16)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16)
-                                .stroke(
-                                    LinearGradient(
-                                        colors: [Color(red: 0.4, green: 0.7, blue: 1.0).opacity(0.4), Color(red: 0.6, green: 0.4, blue: 1.0).opacity(0.4)],
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    ),
-                                    lineWidth: 1.5
-                                )
-                        )
                         .shadow(color: Color.black.opacity(0.08), radius: 12, x: 0, y: 4)
                     }
                 }
@@ -432,7 +505,21 @@ struct ModernMapView: View {
             }
             
             // Category Places List (Bottom Sheet)
-            if showingCategoryList, let filter = selectedFilter {
+            if showingZipcodeResults {
+                VStack {
+                    Spacer()
+
+                    ZipcodePlacesListView(
+                        places: filteredPlaces,
+                        selectedPlace: $selectedPlace,
+                        showingPlaceDetail: $showingPlaceDetail,
+                        isPresented: $showingZipcodeResults
+                    )
+                    .frame(height: UIScreen.main.bounds.height * 0.45)
+                    .transition(.move(edge: .bottom))
+                    .animation(.spring(), value: showingZipcodeResults)
+                }
+            } else if showingCategoryList, let filter = selectedFilter {
                 VStack {
                     Spacer()
                     
@@ -451,9 +538,33 @@ struct ModernMapView: View {
         }
         .background(Color(red: 0.98, green: 0.96, blue: 0.88)) // Instagram style light yellow background
         .ignoresSafeArea(.all)
-        .onAppear {
-            locationManager.requestLocationPermission()
+        .sheet(item: $selectedCuratedPlace) { curated in
+            CuratedPlaceDetailView(place: curated)
+                .environmentObject(locationManager)
         }
+    }
+    
+    /// Zoom map so every curated dog-friendly district pin is visible (teal pins).
+    private func fitMapToAllCuratedDogDistricts() {
+        let pins = dogFriendlyDistrictPins
+        guard !pins.isEmpty else { return }
+        let coords = pins.map(\.coordinate)
+        let fitted = MKCoordinateRegion(boundingCoordinates: coords, paddingFraction: 0.22)
+        withAnimation(.easeInOut(duration: 0.45)) {
+            locationManager.applyMapRegion(fitted)
+        }
+    }
+    
+    /// If district pins sit just outside the opening viewport but the user is still “regional,” nudge the camera once.
+    private func fitCuratedDistrictPinsIfNearCurrentView() {
+        let pins = dogFriendlyDistrictPins
+        guard !pins.isEmpty else { return }
+        let r = locationManager.region
+        if pins.contains(where: { r.containsMapCoordinate($0.coordinate) }) { return }
+        let mapCtr = CLLocation(latitude: r.center.latitude, longitude: r.center.longitude)
+        let minDist = pins.map { CLLocation(latitude: $0.latitude, longitude: $0.longitude).distance(from: mapCtr) }.min() ?? .infinity
+        guard minDist < 260_000 else { return }
+        fitMapToAllCuratedDogDistricts()
     }
     
     private var weatherIcon: String {
@@ -467,6 +578,7 @@ struct ModernMapView: View {
     
     // Handle place selection from map annotation
     private func handlePlaceSelection(_ place: Place) {
+        selectedCuratedPlace = nil
         // Close category list if open
         if showingCategoryList {
             withAnimation(.spring(response: 0.2)) {
@@ -486,6 +598,108 @@ struct ModernMapView: View {
                 self.showingPlaceDetail = true
             }
         }
+    }
+
+    private func searchByZipcode() {
+        let trimmed = zipcodeText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            zipcodeErrorMessage = "Please enter a ZIP code"
+            return
+        }
+        print("📮 [ZipSearch] Searching zipcode: \(trimmed)")
+
+        let geocoder = CLGeocoder()
+        zipcodeErrorMessage = nil
+        geocoder.geocodeAddressString(trimmed) { placemarks, error in
+            DispatchQueue.main.async {
+                guard error == nil, let coordinate = placemarks?.first?.location?.coordinate else {
+                    print("❌ [ZipSearch] Geocode failed for \(trimmed): \(error?.localizedDescription ?? "unknown error")")
+                    zipcodeErrorMessage = "Couldn’t find that ZIP code. Try again."
+                    return
+                }
+                print("✅ [ZipSearch] Geocoded \(trimmed) -> (\(coordinate.latitude), \(coordinate.longitude))")
+
+                // Clear category filter so zipcode results are not accidentally empty.
+                selectedFilter = nil
+                showingCategoryList = false
+                placeViewModel.setFilter(nil)
+
+                placeViewModel.setZipcodeSearch(center: coordinate, radiusMiles: 10.0)
+                locationManager.setRegion(to: coordinate, animated: true)
+                print("🧭 [ZipSearch] Results count after filter: \(placeViewModel.filteredPlaces.count)")
+                withAnimation(.spring()) {
+                    showingZipcodeResults = true
+                }
+            }
+        }
+    }
+}
+
+struct ZipcodePlacesListView: View {
+    let places: [Place]
+    @Binding var selectedPlace: Place?
+    @Binding var showingPlaceDetail: Bool
+    @Binding var isPresented: Bool
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Places within 10 mi")
+                    .font(.headline)
+                Spacer()
+                Text("\(places.count) places")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                Button("Collapse") {
+                    withAnimation(.spring()) {
+                        isPresented = false
+                    }
+                }
+                .padding(.leading, 8)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+
+            if places.isEmpty {
+                VStack(spacing: 8) {
+                    Text("No places within 10 mi of this ZIP")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List(places) { place in
+                    Button(action: {
+                        selectedPlace = place
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            showingPlaceDetail = true
+                        }
+                    }) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(place.name)
+                                    .font(.body.weight(.semibold))
+                                    .foregroundColor(.primary)
+                                Text(place.address)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                            }
+                            Spacer()
+                            Text(String(format: "%.1f★", place.rating))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                .listStyle(.plain)
+            }
+        }
+        .background(Color.white)
+        .cornerRadius(16)
+        .shadow(color: .black.opacity(0.12), radius: 12, x: 0, y: -2)
+        .padding(.horizontal, 12)
+        .padding(.bottom, 12)
     }
 }
 
@@ -609,7 +823,7 @@ struct PlaceDetailCard: View {
                             Image(systemName: userManager.isFavorite(placeId: place.id) ? "heart.fill" : "heart")
                                 .font(.system(size: 13, weight: .semibold))
                                 .foregroundColor(.white)
-                            Text("保存")
+                            Text("Save")
                                 .font(.system(size: 13, weight: .bold, design: .rounded))
                                 .foregroundColor(.white)
                         }
@@ -642,7 +856,7 @@ struct PlaceDetailCard: View {
                         )
                         .font(.system(size: 14, weight: .semibold))
                     
-                    Text("狗狗友好")
+                    Text("Dog-friendly")
                         .font(.system(size: 15, weight: .medium, design: .rounded))
                         .foregroundColor(Color(red: 0.3, green: 0.3, blue: 0.3))
                 }
@@ -657,6 +871,8 @@ struct PlaceDetailCard: View {
                         .font(.system(size: 15, weight: .regular, design: .rounded))
                         .foregroundColor(Color(red: 0.3, green: 0.3, blue: 0.3))
                 }
+                
+                PlaceTagChipsSection(tags: place.tags, sectionTitle: "Tags", cardStyle: true)
                 
                 // Restaurant Seating Type (Instagram Style - only for restaurants)
                 if place.type == .restaurant, let seatingType = place.restaurantSeatingType {
@@ -684,7 +900,7 @@ struct PlaceDetailCard: View {
                             Image(systemName: "tree.fill")
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundColor(.white)
-                            Text("附近")
+                            Text("Nearby")
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                                 .foregroundColor(.white)
                         }
@@ -709,7 +925,7 @@ struct PlaceDetailCard: View {
                             Image(systemName: "location.fill")
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundColor(.white)
-                            Text("导航")
+                            Text("Directions")
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                                 .foregroundColor(.white)
                         }
@@ -732,19 +948,19 @@ struct PlaceDetailCard: View {
                 
                 // Tabs (Instagram Style)
                 HStack(spacing: 24) {
-                    TabButton(title: "详情", isSelected: selectedTab == 0) {
+                    TabButton(title: "Details", isSelected: selectedTab == 0) {
                         selectedTab = 0
                     }
                     
-                    TabButton(title: "评价", isSelected: selectedTab == 1) {
+                    TabButton(title: "Reviews", isSelected: selectedTab == 1) {
                         selectedTab = 1
                     }
                     
-                    TabButton(title: "照片", isSelected: selectedTab == 2) {
+                    TabButton(title: "Photos", isSelected: selectedTab == 2) {
                         selectedTab = 2
                     }
                     
-                    TabButton(title: "评分", isSelected: selectedTab == 3) {
+                    TabButton(title: "Ratings", isSelected: selectedTab == 3) {
                         selectedTab = 3
                     }
                 }
@@ -759,7 +975,7 @@ struct PlaceDetailCard: View {
                                 .foregroundColor(Color(red: 0.3, green: 0.3, blue: 0.3))
                                 .lineSpacing(4)
                         } else {
-                            Text("暂无详情")
+                            Text("No details yet")
                                 .font(.system(size: 15, weight: .regular, design: .rounded))
                                 .foregroundColor(Color.gray.opacity(0.6))
                         }
@@ -773,13 +989,13 @@ struct PlaceDetailCard: View {
                     //     }
                     // }
                     // .frame(maxWidth: .infinity, alignment: .leading)
-                    Text("暂无评价")
+                    Text("No reviews yet")
                         .font(.system(size: 15, weight: .regular, design: .rounded))
                         .foregroundColor(Color.gray.opacity(0.6))
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.top, 4)
                 } else if selectedTab == 2 {
-                    Text("照片即将推出")
+                    Text("Photos coming soon")
                         .font(.system(size: 15, weight: .regular, design: .rounded))
                         .foregroundColor(Color.gray.opacity(0.6))
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -801,7 +1017,7 @@ struct PlaceDetailCard: View {
         switch place.type {
         case .park: return "tree.fill"
         case .trail: return "figure.hiking"
-        case .beach: return "umbrella.beach.fill"
+        case .beach: return "beach.umbrella.fill"
         case .coffee: return "cup.and.saucer.fill"
         case .shop: return "bag.fill"
         case .camp: return "tent.fill"
@@ -872,9 +1088,48 @@ struct ReviewRow: View {
     }
 }
 
+// MARK: - Map region helpers (curated district visibility)
+
+private extension MKCoordinateRegion {
+    func containsMapCoordinate(_ coord: CLLocationCoordinate2D) -> Bool {
+        let halfLat = span.latitudeDelta / 2
+        let halfLon = span.longitudeDelta / 2
+        return abs(coord.latitude - center.latitude) <= halfLat
+            && abs(coord.longitude - center.longitude) <= halfLon
+    }
+    
+    /// Smallest region containing all coordinates, with extra margin for pin tap targets.
+    init(boundingCoordinates coords: [CLLocationCoordinate2D], paddingFraction: Double) {
+        guard let first = coords.first else {
+            self.init(
+                center: CLLocationCoordinate2D(latitude: 42.39, longitude: -83.50),
+                span: MKCoordinateSpan(latitudeDelta: 0.42, longitudeDelta: 0.58)
+            )
+            return
+        }
+        var minLat = first.latitude
+        var maxLat = first.latitude
+        var minLon = first.longitude
+        var maxLon = first.longitude
+        for c in coords.dropFirst() {
+            minLat = min(minLat, c.latitude)
+            maxLat = max(maxLat, c.latitude)
+            minLon = min(minLon, c.longitude)
+            maxLon = max(maxLon, c.longitude)
+        }
+        let cLat = (minLat + maxLat) / 2
+        let cLon = (minLon + maxLon) / 2
+        var latD = max((maxLat - minLat) * (1 + paddingFraction), 0.06)
+        var lonD = max((maxLon - minLon) * (1 + paddingFraction), 0.06)
+        latD = min(latD, 40)
+        lonD = min(lonD, 40)
+        self.init(center: CLLocationCoordinate2D(latitude: cLat, longitude: cLon), span: MKCoordinateSpan(latitudeDelta: latD, longitudeDelta: lonD))
+    }
+}
+
 #Preview {
     ModernMapView()
         .environmentObject(LocationManager())
-        .environmentObject(PlacesManager())
+        .environmentObject(PlaceViewModel())
         .environmentObject(UserManager())
 }

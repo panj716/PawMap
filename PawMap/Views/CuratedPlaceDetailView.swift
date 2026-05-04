@@ -7,6 +7,15 @@ struct CuratedPlaceDetailView: View {
     @EnvironmentObject var locationManager: LocationManager
     @State private var region: MKCoordinateRegion
     
+    private var typeAccentColor: Color {
+        switch place.type {
+        case .dogFriendlyDistrict:
+            return Color(red: 0.18, green: 0.68, blue: 0.62)
+        default:
+            return Color.green
+        }
+    }
+    
     init(place: CuratedPlace) {
         self.place = place
         self._region = State(initialValue: MKCoordinateRegion(
@@ -20,20 +29,7 @@ struct CuratedPlaceDetailView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     // Hero Image
-                    AsyncImage(url: URL(string: place.imageURL)) { image in
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    } placeholder: {
-                        ZStack {
-                            Rectangle()
-                                .fill(Color.gray.opacity(0.1))
-                            
-                            Image(systemName: place.type.iconName)
-                                .font(.system(size: 60))
-                                .foregroundColor(.gray)
-                        }
-                    }
+                    CuratedPlaceRemoteImage(place: place, contentMode: .fill)
                     .frame(height: 250)
                     .clipped()
                     
@@ -43,6 +39,15 @@ struct CuratedPlaceDetailView: View {
                             Text(place.name)
                                 .font(.largeTitle)
                                 .fontWeight(.bold)
+                            
+                            HStack(spacing: 6) {
+                                Image(systemName: "mappin.and.ellipse")
+                                    .foregroundColor(.pink)
+                                    .font(.subheadline.weight(.semibold))
+                                Text(place.displayLocationLine)
+                                    .font(.subheadline.weight(.medium))
+                                    .foregroundColor(.secondary)
+                            }
                             
                             HStack(spacing: 12) {
                                 // Type Badge
@@ -54,7 +59,7 @@ struct CuratedPlaceDetailView: View {
                                     .padding(.vertical, 6)
                                     .background(
                                         Capsule()
-                                            .fill(Color.green)
+                                            .fill(typeAccentColor)
                                     )
                                 
                                 // Rating
@@ -112,7 +117,7 @@ struct CuratedPlaceDetailView: View {
                                             .font(.title2)
                                             .foregroundColor(.white)
                                             .padding(8)
-                                            .background(Color.green)
+                                            .background(typeAccentColor)
                                             .clipShape(Circle())
                                         
                                         Text(place.name)
@@ -169,10 +174,12 @@ struct CuratedPlaceDetailView: View {
         id: "1",
         name: "Golden Gate Park",
         type: .park,
-        address: "Golden Gate Park, San Francisco, CA",
+        address: "Golden Gate Park, San Francisco, CA 94117",
+        locationLabel: "San Francisco, CA",
         latitude: 37.7694,
         longitude: -122.4862,
-        imageURL: "https://example.com/image.jpg",
+        imageURL: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Golden_Gate_Bridge_as_seen_from_Battery_East.jpg/960px-Golden_Gate_Bridge_as_seen_from_Battery_East.jpg",
+        fallbackImageURL: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/66/California-06241_-_In_front_of_museum_%2820449897948%29.jpg/960px-California-06241_-_In_front_of_museum_%2820449897948%29.jpg",
         description: "A beautiful urban park perfect for dogs with plenty of space to run and play.",
         isNational: true,
         rating: 4.8,

@@ -10,7 +10,6 @@ struct LocationPermissionView: View {
             Spacer()
             
             VStack(spacing: 24) {
-                // 图标
                 ZStack {
                     Circle()
                         .fill(Color.blue.opacity(0.1))
@@ -21,48 +20,45 @@ struct LocationPermissionView: View {
                         .foregroundColor(.blue)
                 }
                 
-                // 标题和描述
                 VStack(spacing: 12) {
-                    Text("允许位置访问")
+                    Text("Enable location")
                         .font(.title)
                         .fontWeight(.bold)
                     
-                    Text("PawMap需要访问您的位置来为您推荐附近的狗狗友好地点，让您和您的狗狗享受更好的体验。")
+                    Text("PawMap uses your location to show dog-friendly places nearby and personalize your experience.")
                         .font(.body)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 20)
                 }
                 
-                // 功能列表
                 VStack(spacing: 16) {
                     PermissionFeatureRow(
                         icon: "map.fill",
-                        title: "发现附近地点",
-                        description: "找到您周围的狗狗友好场所"
+                        title: "Discover nearby",
+                        description: "Find dog-friendly spots around you"
                     )
                     
                     PermissionFeatureRow(
                         icon: "location.circle.fill",
-                        title: "个性化推荐",
-                        description: "根据您的位置推荐最佳路线"
+                        title: "Personalized picks",
+                        description: "Better recommendations based on where you are"
                     )
                     
                     PermissionFeatureRow(
                         icon: "heart.fill",
-                        title: "社区分享",
-                        description: "与其他狗狗主人分享您的位置"
+                        title: "Community",
+                        description: "Share places with other dog parents"
                     )
                 }
                 .padding(.horizontal, 20)
                 
-                // 按钮
                 VStack(spacing: 12) {
                     Button(action: {
                         print("Requesting location permission...")
                         locationManager.requestLocationPermission()
                     }) {
-                        Text("允许位置访问")
+                        Text("Allow location access")
                             .font(.headline)
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -74,7 +70,7 @@ struct LocationPermissionView: View {
                     Button(action: {
                         showingSkipAlert = true
                     }) {
-                        Text("稍后设置")
+                        Text("Not now")
                             .font(.subheadline)
                             .foregroundColor(.blue)
                     }
@@ -82,7 +78,7 @@ struct LocationPermissionView: View {
                     Button(action: {
                         locationManager.debugLocationStatus()
                     }) {
-                        Text("调试信息")
+                        Text("Debug info")
                             .font(.caption)
                             .foregroundColor(.gray)
                     }
@@ -90,7 +86,7 @@ struct LocationPermissionView: View {
                     Button(action: {
                         locationManager.forceCenterOnUserLocation()
                     }) {
-                        Text("定位到我的位置")
+                        Text("Center on my location")
                             .font(.caption)
                             .foregroundColor(.green)
                     }
@@ -98,7 +94,7 @@ struct LocationPermissionView: View {
                     Button(action: {
                         locationManager.startFollowingUser()
                     }) {
-                        Text("开始跟随我的位置")
+                        Text("Follow my location")
                             .font(.caption)
                             .foregroundColor(.orange)
                     }
@@ -106,7 +102,7 @@ struct LocationPermissionView: View {
                     Button(action: {
                         locationManager.requestFreshLocation()
                     }) {
-                        Text("请求最新位置")
+                        Text("Refresh location")
                             .font(.caption)
                             .foregroundColor(.blue)
                     }
@@ -114,7 +110,7 @@ struct LocationPermissionView: View {
                     Button(action: {
                         locationManager.resetLocationPermissionState()
                     }) {
-                        Text("重置权限状态(测试)")
+                        Text("Reset permission (debug)")
                             .font(.caption)
                             .foregroundColor(.red)
                     }
@@ -129,14 +125,14 @@ struct LocationPermissionView: View {
         .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: -5)
         .padding(.horizontal, 20)
         .padding(.bottom, 50)
-        .alert("跳过位置权限", isPresented: $showingSkipAlert) {
-            Button("确定") {
+        .alert("Skip location?", isPresented: $showingSkipAlert) {
+            Button("OK") {
                 hasSkippedPermission = true
                 locationManager.hasHandledPermissionPrompt = true
             }
-            Button("取消", role: .cancel) { }
+            Button("Cancel", role: .cancel) { }
         } message: {
-            Text("您可以稍后在设置中启用位置权限。没有位置权限，您将无法看到附近的地点推荐。")
+            Text("You can turn on location later in Settings. Without it, nearby recommendations won’t work as well.")
         }
         .opacity(hasSkippedPermission ? 0 : 1)
         .animation(.easeInOut(duration: 0.3), value: hasSkippedPermission)

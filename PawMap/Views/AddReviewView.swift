@@ -16,7 +16,7 @@ struct AddReviewView: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("评分")) {
+                Section(header: Text("Rating")) {
                     HStack {
                         ForEach(1...5, id: \.self) { star in
                             Button(action: {
@@ -34,12 +34,12 @@ struct AddReviewView: View {
                     }
                 }
                 
-                Section(header: Text("评论")) {
-                    TextField("分享你的体验...", text: $comment, axis: .vertical)
+                Section(header: Text("Review")) {
+                    TextField("Share your experience…", text: $comment, axis: .vertical)
                         .lineLimit(3...8)
                 }
                 
-                Section(header: Text("照片")) {
+                Section(header: Text("Photos")) {
                     PhotosPicker(
                         selection: $selectedImages,
                         maxSelectionCount: 5,
@@ -48,11 +48,11 @@ struct AddReviewView: View {
                         HStack {
                             Image(systemName: "camera.fill")
                                 .foregroundColor(.pink)
-                            Text("添加照片")
+                            Text("Add photos")
                                 .foregroundColor(.primary)
                             Spacer()
                             if !imageData.isEmpty {
-                                Text("\(imageData.count) 张照片")
+                                Text("\(imageData.count) photos")
                                     .foregroundColor(.secondary)
                             }
                         }
@@ -89,18 +89,18 @@ struct AddReviewView: View {
                 }
                 
                 Section {
-                    Button("提交评论") {
+                    Button("Submit review") {
                         submitReview()
                     }
                     .disabled(comment.isEmpty)
                     .foregroundColor(.pink)
                 }
             }
-            .navigationTitle("添加评论")
+            .navigationTitle("Add review")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("取消") {
+                    Button("Cancel") {
                         dismiss()
                     }
                 }
@@ -115,12 +115,12 @@ struct AddReviewView: View {
                     }
                 }
             }
-            .alert("评论已提交", isPresented: $showingSuccessAlert) {
-                Button("确定") {
+            .alert("Review submitted", isPresented: $showingSuccessAlert) {
+                Button("OK") {
                     dismiss()
                 }
             } message: {
-                Text("感谢您的反馈！您的评论已成功提交。")
+                Text("Thanks! Your review was submitted.")
             }
         }
     }
@@ -130,7 +130,7 @@ struct AddReviewView: View {
             id: UUID().uuidString,
             placeId: place.id,
             userId: userManager.currentUser?.id ?? "anonymous",
-            userName: userManager.currentUser?.name ?? "匿名用户",
+            userName: userManager.currentUser?.name ?? "Anonymous",
             rating: rating,
             comment: comment,
             images: imageData.map { $0.base64EncodedString() },
@@ -146,12 +146,12 @@ struct AddReviewView: View {
 
 #Preview {
     AddReviewView(place: Place(
-        name: "测试地点",
+        name: "Sample place",
         type: .coffee,
-        address: "测试地址",
+        address: "Sample address",
         latitude: 42.9634,
         longitude: -85.6681,
-        notes: "测试笔记",
+        notes: "Sample notes",
         createdBy: "test-user-id"
     ))
     .environmentObject(PlacesManager())

@@ -43,7 +43,7 @@ struct MainAppView: View {
             }
         }
         .sheet(isPresented: $authViewModel.showingLogin) {
-            LoginView()
+            AuthenticationView()
                 .environmentObject(authViewModel)
         }
         .sheet(isPresented: $authViewModel.showingSignUp) {
@@ -58,6 +58,7 @@ struct MainMapView: View {
     @EnvironmentObject var placesManager: PlacesManager
     @EnvironmentObject var userManager: UserManager
     @EnvironmentObject var authViewModel: AuthViewModel
+    @StateObject private var placeViewModel = PlaceViewModel()
     
     @State private var showingFilterSheet = false
     @State private var showingAddPlaceSheet = false
@@ -65,28 +66,28 @@ struct MainMapView: View {
     @State private var selectedFilter: Place.PlaceType?
     @State private var searchText = ""
     @State private var showingLocationPermissionAlert = false
-    @State private var selectedTab = 1 // 默认选中中间的+按钮
+    @State private var selectedTab = 1 // Default: center + tab
     
     var body: some View {
         ZStack {
-            // 全屏地图
+            // Full-screen map
             ModernMapView()
                 .environmentObject(locationManager)
-                .environmentObject(placesManager)
+                .environmentObject(placeViewModel)
                 .environmentObject(userManager)
                 .ignoresSafeArea()
             
-            // 顶部控制栏
+            // Top bar
             VStack {
                 HStack {
-                    // 搜索按钮
+                    // Search
                     Button(action: {
                         showingSearchSheet = true
                     }) {
                         HStack {
                             Image(systemName: "magnifyingglass")
                                 .foregroundColor(.pink)
-                            Text("搜索狗狗友好的地方...")
+                            Text("Search dog friendly places near you")
                                 .foregroundColor(.pink.opacity(0.7))
                             Spacer()
                             Image(systemName: "pawprint.fill")
@@ -106,7 +107,7 @@ struct MainMapView: View {
                         .shadow(color: .pink.opacity(0.1), radius: 4, x: 0, y: 2)
                     }
                     
-                    // 筛选按钮
+                    // Filter
                     Button(action: {
                         showingFilterSheet = true
                     }) {
@@ -131,7 +132,7 @@ struct MainMapView: View {
                 Spacer()
             }
             
-            // 底部导航栏
+            // Bottom tab bar
         VStack {
                 Spacer()
                 
@@ -144,13 +145,6 @@ struct MainMapView: View {
                 .environmentObject(authViewModel)
             }
             
-            // 位置权限提示
-            if locationManager.authorizationStatus == .notDetermined && !locationManager.hasHandledPermissionPrompt {
-                LocationPermissionView()
-                    .environmentObject(locationManager)
-                    .environmentObject(placesManager)
-                    .environmentObject(userManager)
-            }
         }
         .sheet(isPresented: $showingFilterSheet) {
             FilterSheetView(selectedFilter: $selectedFilter)
@@ -160,29 +154,26 @@ struct MainMapView: View {
         }
         .sheet(isPresented: $showingAddPlaceSheet) {
             AddPlaceSheetView()
-                .environmentObject(PlaceViewModel())
+                .environmentObject(placeViewModel)
                 .environmentObject(authViewModel)
                 .environmentObject(locationManager)
                 .environmentObject(placesManager)
         }
         .sheet(isPresented: $showingSearchSheet) {
             SearchSheetView(searchText: $searchText)
-                .environmentObject(locationManager)
                 .environmentObject(placesManager)
+                .environmentObject(placeViewModel)
                 .environmentObject(userManager)
         }
-        .alert("需要位置权限", isPresented: $showingLocationPermissionAlert) {
-            Button("设置") {
+        .alert("Location Access Needed", isPresented: $showingLocationPermissionAlert) {
+            Button("Settings") {
                 if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
                     UIApplication.shared.open(settingsUrl)
                 }
             }
-            Button("取消", role: .cancel) { }
+            Button("Cancel", role: .cancel) { }
         } message: {
-            Text("请在设置中允许PawMap访问您的位置，以便为您推荐附近的狗狗友好地点。")
-        }
-        .onAppear {
-            locationManager.requestLocationPermission()
+            Text("Please allow PawMap to use your location in Settings so we can show dog-friendly places near you.")
         }
     }
 }
@@ -201,10 +192,9 @@ struct BottomNavigationBar: View {
     
     var body: some View {
         HStack(spacing: 0) {
-            // Explore 按钮
+            // Explore
             Button(action: {
                 selectedTab = 0
-                // 这里可以添加explore功能
             }) {
                 VStack(spacing: 4) {
                     ZStack {
@@ -224,7 +214,7 @@ struct BottomNavigationBar: View {
             }
             .frame(maxWidth: .infinity)
             
-            // Top Picks 按钮
+            // Paw Picks (curated nationwide list)
             Button(action: {
                 selectedTab = 1
                 showingTopPicksSheet = true
@@ -235,19 +225,21 @@ struct BottomNavigationBar: View {
                             .fill(selectedTab == 1 ? Color.purple.opacity(0.2) : Color.clear)
                             .frame(width: 45, height: 45)
                         
-                        Image(systemName: selectedTab == 1 ? "heart.circle.fill" : "heart.circle")
+                        Image(systemName: selectedTab == 1 ? "star.circle.fill" : "star.circle")
                             .font(.system(size: 24))
                             .foregroundColor(selectedTab == 1 ? .purple : .gray)
                     }
                     
-                    Text("Top Picks")
+                    Text("Paw Picks⭐")
                         .font(.caption2)
+                        .minimumScaleFactor(0.75)
+                        .lineLimit(1)
                         .foregroundColor(selectedTab == 1 ? .purple : .gray)
                 }
             }
             .frame(maxWidth: .infinity)
             
-            // 中间的 + 按钮 (主要按钮)
+            // Center + (add place)
             Button(action: {
                 selectedTab = 2
                 showingAddPlaceSheet = true
@@ -279,7 +271,7 @@ struct BottomNavigationBar: View {
             }
             .frame(maxWidth: .infinity)
             
-            // Favorites 按钮
+            // Favorites
             Button(action: {
                 selectedTab = 3
                 showingFavoritesSheet = true
@@ -302,7 +294,7 @@ struct BottomNavigationBar: View {
             }
             .frame(maxWidth: .infinity)
             
-            // Me 按钮
+            // Me / profile
             Button(action: {
                 selectedTab = 4
                 showingProfileSheet = true
@@ -339,7 +331,7 @@ struct BottomNavigationBar: View {
                 .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: -5)
         )
         .padding(.horizontal, 16)
-        .padding(.bottom, 34) // 为安全区域留出空间
+        .padding(.bottom, 34) // Home indicator inset
         .sheet(isPresented: $showingFavoritesSheet) {
             FavoritesView()
                 .environmentObject(authViewModel)
@@ -348,31 +340,11 @@ struct BottomNavigationBar: View {
         .sheet(isPresented: $showingProfileSheet) {
             ProfileView()
                 .environmentObject(authViewModel)
+                .environmentObject(userManager)
         }
         .sheet(isPresented: $showingTopPicksSheet) {
             TopPicksView()
                 .environmentObject(locationManager)
-        }
-        .onAppear {
-            // Request location permission when app starts
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                locationManager.requestLocationPermission()
-            }
-        }
-        .alert("Location Access Required", isPresented: $showingLocationPermissionAlert) {
-            Button("Settings") {
-                if let settingsUrl = URL(string: UIApplication.openSettingsURLString) {
-                    UIApplication.shared.open(settingsUrl)
-                }
-            }
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text("PawMap needs access to your location to show nearby dog-friendly places. Please enable location access in Settings.")
-        }
-        .onChange(of: locationManager.authorizationStatus) { _, status in
-            if status == .denied || status == .restricted {
-                showingLocationPermissionAlert = true
-            }
         }
     }
 }
@@ -391,7 +363,7 @@ struct FavoritesListView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                // 头部装饰
+                // Header
                 VStack(spacing: 16) {
                     ZStack {
                         Circle()
@@ -409,12 +381,12 @@ struct FavoritesListView: View {
                             .foregroundColor(.white)
                     }
                     
-                    Text("我的收藏")
+                    Text("My Favorites")
                         .font(.title)
                         .fontWeight(.bold)
                         .foregroundColor(.pink)
                     
-                    Text("\(favoritePlaces.count) 个地点")
+                    Text("\(favoritePlaces.count) places")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
@@ -422,7 +394,7 @@ struct FavoritesListView: View {
                 .padding(.bottom, 20)
                 
                 if favoritePlaces.isEmpty {
-                    // 空状态
+                    // Empty state
                     VStack(spacing: 20) {
                         Spacer()
                         
@@ -430,12 +402,12 @@ struct FavoritesListView: View {
                             .font(.system(size: 60))
                             .foregroundColor(.pink.opacity(0.3))
                         
-                        Text("还没有收藏的地点")
+                        Text("No favorites yet")
                             .font(.title2)
                             .fontWeight(.medium)
                             .foregroundColor(.secondary)
                         
-                        Text("在地图上点击地点，然后点击❤️来收藏")
+                        Text("Tap a place on the map, then tap ❤️ to save it")
                             .font(.body)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
@@ -444,18 +416,18 @@ struct FavoritesListView: View {
                         Spacer()
                     }
                 } else {
-                    // 收藏列表
+                    // List
                     List(favoritePlaces) { place in
                         FavoritePlaceRow(place: place)
                     }
                     .listStyle(PlainListStyle())
                 }
             }
-            .navigationTitle("收藏")
+            .navigationTitle("Favorites")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("完成") {
+                    Button("Done") {
                         dismiss()
                     }
                 }

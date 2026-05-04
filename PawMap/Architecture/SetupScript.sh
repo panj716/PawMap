@@ -39,3 +39,5 @@ echo "7. Deploy the security rules: firebase deploy --only firestore:rules,stora
 echo ""
 echo "🎉 Setup complete! Follow the instructions in FirebaseSetupInstructions.md"
 
+
+

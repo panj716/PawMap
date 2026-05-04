@@ -72,6 +72,29 @@ struct Place: Identifiable, Codable, Equatable {
         self.dogAmenities = dogAmenities
         self.restaurantSeatingType = restaurantSeatingType
     }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        type = try container.decode(PlaceType.self, forKey: .type)
+        address = try container.decode(String.self, forKey: .address)
+        latitude = try container.decode(Double.self, forKey: .latitude)
+        longitude = try container.decode(Double.self, forKey: .longitude)
+
+        // Backward-compatible defaults for legacy documents.
+        rating = try container.decodeIfPresent(Double.self, forKey: .rating) ?? 0.0
+        tags = try container.decodeIfPresent([String].self, forKey: .tags) ?? []
+        notes = try container.decodeIfPresent(String.self, forKey: .notes) ?? ""
+        createdBy = try container.decodeIfPresent(String.self, forKey: .createdBy) ?? "system"
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt) ?? Date()
+        isVerified = try container.decodeIfPresent(Bool.self, forKey: .isVerified) ?? false
+        reportCount = try container.decodeIfPresent(Int.self, forKey: .reportCount) ?? 0
+        images = try container.decodeIfPresent([String].self, forKey: .images) ?? []
+        dogAmenities = try container.decodeIfPresent(DogAmenities.self, forKey: .dogAmenities) ?? .empty
+        restaurantSeatingType = try container.decodeIfPresent(RestaurantSeatingType.self, forKey: .restaurantSeatingType)
+    }
     
     // MARK: - Update Methods
     
@@ -157,14 +180,14 @@ struct Place: Identifiable, Codable, Equatable {
         
         var displayName: String {
             switch self {
-            case .coffee: return "咖啡店"
-            case .trail: return "步道"
-            case .park: return "公园"
-            case .beach: return "海滩"
-            case .shop: return "商店"
-            case .camp: return "营地"
-            case .restaurant: return "餐厅"
-            case .other: return "其他"
+            case .coffee: return "Coffee"
+            case .trail: return "Trail"
+            case .park: return "Park"
+            case .beach: return "Beach"
+            case .shop: return "Shop"
+            case .camp: return "Camp"
+            case .restaurant: return "Restaurant"
+            case .other: return "Other"
             }
         }
         
@@ -204,9 +227,9 @@ struct Place: Identifiable, Codable, Equatable {
         
         var displayName: String {
             switch self {
-            case .indoor: return "室内"
-            case .outdoor: return "室外"
-            case .heatedPatio: return "加热露台"
+            case .indoor: return "Indoor"
+            case .outdoor: return "Outdoor"
+            case .heatedPatio: return "Heated patio"
             }
         }
         
@@ -225,6 +248,59 @@ struct Place: Identifiable, Codable, Equatable {
             case .heatedPatio: return "flame.fill"
             }
         }
+    }
+}
+
+// MARK: - Place tags (UI labels)
+
+extension Place {
+    /// Human-readable text for a tag stored in Firestore (`camelCase`, `snake_case`, or known keys).
+    static func displayLabel(forTag raw: String) -> String {
+        let key = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if key.isEmpty { return raw }
+        let known: [String: String] = [
+            "offLeash": "Off-leash allowed",
+            "dogFriendly": "Dog-friendly",
+            "outdoorSeating": "Outdoor patio",
+            "fenced": "Fenced area",
+            "dogPark": "Dog park",
+            "metroDetroit": "Metro Detroit",
+            "needsReview": "Needs review",
+            "troy": "Troy",
+            "annArbor": "Ann Arbor",
+            "birmingham": "Birmingham",
+            "royalOak": "Royal Oak",
+            "sterlingHeights": "Sterling Heights",
+            "coffee": "Coffee shop",
+            "park": "Park",
+            "trail": "Trail",
+            "restaurant": "Restaurant",
+            "patio": "Patio",
+            "indoorAccess": "Indoor friendly",
+            "heatedPatio": "Heated patio",
+            "inStore": "In-store friendly",
+            "waterStation": "Water station",
+            "wasteBags": "Waste bags"
+        ]
+        if let label = known[key] { return label }
+        return humanizeTagKey(key)
+    }
+    
+    private static func humanizeTagKey(_ key: String) -> String {
+        var result = ""
+        for ch in key {
+            if ch.isUppercase, !result.isEmpty, let last = result.last, last.isLowercase {
+                result.append(" ")
+            }
+            if ch == "_" {
+                result.append(" ")
+            } else {
+                result.append(ch)
+            }
+        }
+        let parts = result.split(whereSeparator: { $0.isWhitespace }).map(String.init)
+        guard !parts.isEmpty else { return key.prefix(1).uppercased() + key.dropFirst() }
+        return parts.map { p in p.prefix(1).uppercased() + p.dropFirst().lowercased() }.joined(separator: " ")
     }
 }
 
@@ -485,6 +561,31 @@ struct UserProfile: Identifiable, Codable, Equatable {
     enum CodingKeys: String, CodingKey {
         case id, email, name, dogName, dogPhotoURL, dogBirthday, dogBreed, dogWeight
         case dogGender, dogTraits, dogNotes, profileImageURL, favoritePlaceIDs, createdAt, updatedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        email = try container.decode(String.self, forKey: .email)
+        name = try container.decode(String.self, forKey: .name)
+        dogName = try container.decodeIfPresent(String.self, forKey: .dogName) ?? ""
+        dogPhotoURL = try container.decodeIfPresent(String.self, forKey: .dogPhotoURL)
+        dogBirthday = try container.decodeIfPresent(Date.self, forKey: .dogBirthday)
+        dogBreed = try container.decodeIfPresent(String.self, forKey: .dogBreed) ?? ""
+        dogWeight = try container.decodeIfPresent(Double.self, forKey: .dogWeight) ?? 0.0
+        dogGender = try container.decodeIfPresent(String.self, forKey: .dogGender) ?? ""
+        dogTraits = try container.decodeIfPresent([String].self, forKey: .dogTraits) ?? []
+        if let notes = try? container.decode(String.self, forKey: .dogNotes) {
+            dogNotes = notes
+        } else if let notesArray = try? container.decode([String].self, forKey: .dogNotes) {
+            dogNotes = notesArray.joined(separator: ", ")
+        } else {
+            dogNotes = ""
+        }
+        profileImageURL = try container.decodeIfPresent(String.self, forKey: .profileImageURL)
+        favoritePlaceIDs = try container.decodeIfPresent([String].self, forKey: .favoritePlaceIDs) ?? []
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt) ?? Date()
     }
     
     init(id: String, email: String, name: String, dogName: String = "", dogPhotoURL: String? = nil, dogBirthday: Date? = nil, dogBreed: String = "", dogWeight: Double = 0.0, dogGender: String = "", dogTraits: [String] = [], dogNotes: String = "", profileImageURL: String? = nil, favoritePlaceIDs: [String] = [], createdAt: Date = Date(), updatedAt: Date = Date()) {

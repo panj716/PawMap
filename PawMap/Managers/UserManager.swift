@@ -117,11 +117,11 @@ class UserManager: ObservableObject {
     }
     
     func loginWithGoogle() {
-        // 模拟Google登录
+        // Mock Google sign-in
         let user = UserProfile(
             id: UUID().uuidString,
             email: "user@gmail.com",
-            name: "Google用户",
+            name: "Google User",
             dogName: "",
             dogPhotoURL: nil,
             dogBirthday: nil,
@@ -248,7 +248,7 @@ class UserManager: ObservableObject {
             userFavorites.insert(placeId)
         }
         
-        // 同步更新 currentUser 的 favoritePlaceIDs
+        // Keep currentUser.favoritePlaceIDs in sync
         if var user = currentUser {
             var updatedFavoriteIDs = user.favoritePlaceIDs
             if updatedFavoriteIDs.contains(placeId) {
@@ -281,14 +281,11 @@ class UserManager: ObservableObject {
     }
     
     func isFavorite(placeId: String) -> Bool {
-        // 检查 userFavorites Set
         if userFavorites.contains(placeId) {
             return true
         }
         
-        // 同时检查 currentUser 的 favoritePlaceIDs（确保同步）
         if let user = currentUser, user.favoritePlaceIDs.contains(placeId) {
-            // 如果 currentUser 有但 userFavorites 没有，同步它们
             if !userFavorites.contains(placeId) {
                 userFavorites.insert(placeId)
             }
@@ -344,7 +341,6 @@ class UserManager: ObservableObject {
                 print("✅ Successfully loaded user: \(user.name)")
                 print("📊 Loaded user details - Name: '\(user.name)', Dog: '\(user.dogName)', Breed: '\(user.dogBreed)'")
                 
-                // 从 currentUser 的 favoritePlaceIDs 加载收藏
                 userFavorites = Set(user.favoritePlaceIDs)
                 print("✅ Loaded \(user.favoritePlaceIDs.count) favorites from user profile")
             } catch {
@@ -354,13 +350,11 @@ class UserManager: ObservableObject {
             print("❌ No user data found in storage")
         }
         
-        // 如果 userFavorites 为空，尝试从旧的 favoritesKey 加载（向后兼容）
         if userFavorites.isEmpty {
             if let favoritesArray = userDefaults.array(forKey: favoritesKey) as? [String] {
                 userFavorites = Set(favoritesArray)
                 print("✅ Loaded \(favoritesArray.count) favorites from legacy storage")
                 
-                // 同步到 currentUser
                 if var user = currentUser {
                     let updatedUser = UserProfile(
                         id: user.id,

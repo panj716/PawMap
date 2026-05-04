@@ -11,8 +11,14 @@ import FirebaseCore
 class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
-        FirebaseApp.configure()
-        print("🚀 App launched successfully with Firebase!")
+        // Initialize Firebase if GoogleService-Info.plist exists
+        if let path = Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist"),
+           FileManager.default.fileExists(atPath: path) {
+            FirebaseApp.configure()
+            print("🚀 Firebase initialized successfully!")
+        } else {
+            print("⚠️ GoogleService-Info.plist not found. Firebase features will be limited.")
+        }
         return true
     }
 }
@@ -21,18 +27,9 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 struct PawMapApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     
-    init() {
-        // Firebase is already configured in AppDelegate
-    }
-    
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .environmentObject(AuthViewModel())
-                .environmentObject(PlaceViewModel())
-                .environmentObject(FavoritesViewModel())
-                .environmentObject(TopPicksViewModel())
-                .environmentObject(LocationService())
         }
     }
 }

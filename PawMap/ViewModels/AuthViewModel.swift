@@ -1,6 +1,8 @@
 import Foundation
 import Combine
 import AuthenticationServices
+import UIKit
+import FirebaseAuth
 
 /// ViewModel for handling authentication state and user management
 class AuthViewModel: ObservableObject {
@@ -166,6 +168,7 @@ class AuthViewModel: ObservableObject {
             email: user.email,
             name: user.name,
             profileImageUrl: user.profileImageUrl,
+            dogPhotoUrl: user.dogPhotoUrl,
             dogName: user.dogName,
             dogBreed: user.dogBreed,
             dogBirthday: user.dogBirthday,
@@ -226,6 +229,66 @@ class AuthViewModel: ObservableObject {
         
         let updatedUser = user.updatingProfileImage(imageUrl)
         updateUserProfile(updatedUser)
+    }
+    
+    /// Upload profile avatar to Storage (`users/{uid}/profile/avatar.jpg`) and save URL to Firestore.
+    func uploadProfilePhoto(_ imageData: Data) {
+        guard let user = currentUser,
+              let firebaseUser = Auth.auth().currentUser,
+              firebaseUser.uid == user.id,
+              let image = UIImage(data: imageData) else {
+            errorMessage = "Sign in required to upload a photo."
+            return
+        }
+        isLoading = true
+        errorMessage = nil
+        let path = "users/\(user.id)/profile/avatar.jpg"
+        StorageService.shared.uploadImage(image, to: path)
+            .receive(on: DispatchQueue.main)
+            .sink(
+                receiveCompletion: { [weak self] completion in
+                    self?.isLoading = false
+                    if case .failure(let err) = completion {
+                        self?.errorMessage = err.localizedDescription
+                    }
+                },
+                receiveValue: { [weak self] url in
+                    self?.updateProfileImage(url)
+                    self?.isLoading = false
+                }
+            )
+            .store(in: &cancellables)
+    }
+    
+    /// Upload dog photo to Storage (`users/{uid}/profile/dog.jpg`) and save URL to Firestore.
+    func uploadDogPhoto(_ imageData: Data) {
+        guard let user = currentUser,
+              let firebaseUser = Auth.auth().currentUser,
+              firebaseUser.uid == user.id,
+              let image = UIImage(data: imageData) else {
+            errorMessage = "Sign in required to upload a photo."
+            return
+        }
+        isLoading = true
+        errorMessage = nil
+        let path = "users/\(user.id)/profile/dog.jpg"
+        StorageService.shared.uploadImage(image, to: path)
+            .receive(on: DispatchQueue.main)
+            .sink(
+                receiveCompletion: { [weak self] completion in
+                    self?.isLoading = false
+                    if case .failure(let err) = completion {
+                        self?.errorMessage = err.localizedDescription
+                    }
+                },
+                receiveValue: { [weak self] url in
+                    guard let self = self, let u = self.currentUser else { return }
+                    let updated = u.updatingDogPhotoImage(url)
+                    self.updateUserProfile(updated)
+                    self.isLoading = false
+                }
+            )
+            .store(in: &cancellables)
     }
     
     func updateDogProfile(name: String? = nil, breed: String? = nil, birthday: Date? = nil, weight: Double? = nil, gender: String? = nil, traits: [String]? = nil, notes: String? = nil) {

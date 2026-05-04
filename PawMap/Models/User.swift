@@ -8,6 +8,8 @@ struct PawMapUser: Identifiable, Codable, Equatable {
     let email: String
     let name: String
     let profileImageUrl: String?
+    /// Dog avatar in Storage, e.g. `users/{uid}/profile/dog.jpg`
+    let dogPhotoUrl: String?
     let dogName: String?
     let dogBreed: String?
     let dogBirthday: Date?
@@ -63,18 +65,48 @@ struct PawMapUser: Identifiable, Codable, Equatable {
     
     // Coding keys to exclude computed properties
     enum CodingKeys: String, CodingKey {
-        case id, email, name, profileImageUrl
+        case id, email, name, profileImageUrl, dogPhotoUrl
         case dogName, dogBreed, dogBirthday, dogWeight, dogGender, dogTraits, dogNotes, favoritePlaceIDs
         case createdAt, lastActiveAt
     }
     
+    // Custom decoder to handle both String and [String] for dogNotes (backward compatibility)
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        email = try container.decode(String.self, forKey: .email)
+        name = try container.decode(String.self, forKey: .name)
+        profileImageUrl = try container.decodeIfPresent(String.self, forKey: .profileImageUrl)
+        dogPhotoUrl = try container.decodeIfPresent(String.self, forKey: .dogPhotoUrl)
+        dogName = try container.decodeIfPresent(String.self, forKey: .dogName)
+        dogBreed = try container.decodeIfPresent(String.self, forKey: .dogBreed)
+        dogBirthday = try container.decodeIfPresent(Date.self, forKey: .dogBirthday)
+        dogWeight = try container.decodeIfPresent(Double.self, forKey: .dogWeight)
+        dogGender = try container.decodeIfPresent(String.self, forKey: .dogGender)
+        dogTraits = try container.decodeIfPresent([String].self, forKey: .dogTraits) ?? []
+        
+        // Handle dogNotes as either String or [String] (backward compatibility)
+        if let notesString = try? container.decode(String.self, forKey: .dogNotes) {
+            dogNotes = notesString
+        } else if let notesArray = try? container.decode([String].self, forKey: .dogNotes) {
+            dogNotes = notesArray.joined(separator: ", ")
+        } else {
+            dogNotes = nil
+        }
+        
+        favoritePlaceIDs = try container.decodeIfPresent([String].self, forKey: .favoritePlaceIDs) ?? []
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+        lastActiveAt = try container.decodeIfPresent(Date.self, forKey: .lastActiveAt) ?? Date()
+    }
+    
     // MARK: - Initializers
     
-    init(id: String, email: String, name: String, profileImageUrl: String? = nil, dogName: String? = nil, dogBreed: String? = nil, dogBirthday: Date? = nil, dogWeight: Double? = nil, dogGender: String? = nil, dogTraits: [String] = [], dogNotes: String? = nil, favoritePlaceIDs: [String] = [], createdAt: Date = Date(), lastActiveAt: Date = Date()) {
+    init(id: String, email: String, name: String, profileImageUrl: String? = nil, dogPhotoUrl: String? = nil, dogName: String? = nil, dogBreed: String? = nil, dogBirthday: Date? = nil, dogWeight: Double? = nil, dogGender: String? = nil, dogTraits: [String] = [], dogNotes: String? = nil, favoritePlaceIDs: [String] = [], createdAt: Date = Date(), lastActiveAt: Date = Date()) {
         self.id = id
         self.email = email
         self.name = name
         self.profileImageUrl = profileImageUrl
+        self.dogPhotoUrl = dogPhotoUrl
         self.dogName = dogName
         self.dogBreed = dogBreed
         self.dogBirthday = dogBirthday
@@ -95,6 +127,27 @@ struct PawMapUser: Identifiable, Codable, Equatable {
             email: email,
             name: name,
             profileImageUrl: url,
+            dogPhotoUrl: dogPhotoUrl,
+            dogName: dogName,
+            dogBreed: dogBreed,
+            dogBirthday: dogBirthday,
+            dogWeight: dogWeight,
+            dogGender: dogGender,
+            dogTraits: dogTraits,
+            dogNotes: dogNotes,
+            favoritePlaceIDs: favoritePlaceIDs,
+            createdAt: createdAt,
+            lastActiveAt: lastActiveAt
+        )
+    }
+    
+    func updatingDogPhotoImage(_ url: String) -> PawMapUser {
+        return PawMapUser(
+            id: id,
+            email: email,
+            name: name,
+            profileImageUrl: profileImageUrl,
+            dogPhotoUrl: url,
             dogName: dogName,
             dogBreed: dogBreed,
             dogBirthday: dogBirthday,
@@ -114,6 +167,7 @@ struct PawMapUser: Identifiable, Codable, Equatable {
             email: email,
             name: name ?? self.name,
             profileImageUrl: profileImageUrl,
+            dogPhotoUrl: dogPhotoUrl,
             dogName: name ?? dogName,
             dogBreed: breed ?? dogBreed,
             dogBirthday: birthday ?? dogBirthday,

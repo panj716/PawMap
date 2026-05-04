@@ -17,7 +17,7 @@ struct SplashScreenView: View {
     
     var body: some View {
         ZStack {
-            // 背景渐变
+            // Background gradient
             LinearGradient(
                 gradient: Gradient(colors: [
                     Color.pink.opacity(0.8),
@@ -32,11 +32,9 @@ struct SplashScreenView: View {
             VStack(spacing: 30) {
                 Spacer()
                 
-                // 主Logo动画
+                // Main logo
                 VStack(spacing: 20) {
-                    // 狗狗脚印图标
                     ZStack {
-                        // 背景圆圈
                         Circle()
                             .fill(
                                 LinearGradient(
@@ -50,7 +48,6 @@ struct SplashScreenView: View {
                             .scaleEffect(logoScale)
                             .opacity(logoOpacity)
                         
-                        // 主图标
                         Image(systemName: "pawprint.fill")
                             .font(.system(size: 50, weight: .bold))
                             .foregroundColor(.pink)
@@ -58,15 +55,13 @@ struct SplashScreenView: View {
                             .opacity(logoOpacity)
                     }
                     
-                    // 应用名称
                     Text("PawMap")
                         .font(.system(size: 36, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
                         .opacity(textOpacity)
                         .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
                     
-                    // 副标题
-                    Text("发现狗狗友好的地方")
+                    Text("Discover dog-friendly places")
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.white.opacity(0.9))
                         .opacity(textOpacity)
@@ -75,22 +70,18 @@ struct SplashScreenView: View {
                 
                 Spacer()
                 
-                // 活泼的小狗跳跃和跑步动画
                 VStack(spacing: 15) {
                     Text("Loading...")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.white.opacity(0.8))
                         .opacity(pawPrintsOpacity)
                     
-                    // 小狗活动区域
                     ZStack {
-                        // 背景圆形区域
                         Circle()
                             .fill(Color.white.opacity(0.1))
                             .frame(width: 180, height: 180)
                             .opacity(pawPrintsOpacity)
                         
-                        // 跑步中的小狗动画
                         Text("🐕")
                             .font(.system(size: 40))
                             .scaleEffect(y: isAnimating ? 0.9 : 1.0)
@@ -98,7 +89,6 @@ struct SplashScreenView: View {
                             .animation(.easeInOut(duration: 0.4).repeatForever(autoreverses: true), value: isAnimating)
                             .opacity(pawPrintsOpacity)
                         
-                        // 跑步脚印轨迹
                         ForEach(0..<3, id: \.self) { index in
                             Text("🐾")
                                 .font(.system(size: 12))
@@ -109,7 +99,6 @@ struct SplashScreenView: View {
                     }
                     .frame(width: 200, height: 200)
                     
-                    // 加载文字
                     Text("Finding dog-friendly places near you...")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.white.opacity(0.7))
@@ -128,20 +117,17 @@ struct SplashScreenView: View {
     }
     
     private func startAnimation() {
-        // 第一阶段：Logo出现
         withAnimation(.easeOut(duration: 0.8)) {
             logoScale = 1.0
             logoOpacity = 1.0
         }
         
-        // 第二阶段：文字出现
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
             withAnimation(.easeOut(duration: 0.6)) {
                 textOpacity = 1.0
             }
         }
         
-        // 第三阶段：装饰脚印出现
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
             withAnimation(.easeOut(duration: 0.5)) {
                 pawPrintsOpacity = 1.0
@@ -149,7 +135,6 @@ struct SplashScreenView: View {
             }
         }
         
-        // 3秒后转到主应用
         DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
             withAnimation(.easeInOut(duration: 0.5)) {
                 showMainApp = true

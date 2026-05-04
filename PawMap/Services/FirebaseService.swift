@@ -119,67 +119,79 @@ class FirebaseService: ObservableObject {
         .eraseToAnyPublisher()
     }
     
-    /// Listen to real-time updates for a collection
+    /// Listen to real-time updates for a collection.
+    /// Uses a long-lived publisher (not `Future`) so every snapshot update reaches subscribers.
     func listenToCollection<T: Codable>(_ type: T.Type, from collection: String, where field: String? = nil, isEqualTo value: Any? = nil) -> AnyPublisher<[T], Error> {
-        return Future<[T], Error> { [weak self] promise in
+        Deferred { [weak self] () -> AnyPublisher<[T], Error> in
             guard let self = self else {
-                promise(.failure(FirebaseError.serviceUnavailable))
-                return
+                return Fail(error: FirebaseError.serviceUnavailable).eraseToAnyPublisher()
             }
             
             var query: Query = self.db.collection(collection)
-            
             if let field = field, let value = value {
                 query = query.whereField(field, isEqualTo: value)
             }
             
+            let subject = PassthroughSubject<[T], Error>()
             let listener = query.addSnapshotListener { snapshot, error in
                 if let error = error {
-                    promise(.failure(error))
+                    subject.send(completion: .failure(error))
                     return
                 }
-                
                 guard let documents = snapshot?.documents else {
-                    promise(.success([]))
+                    subject.send([])
                     return
                 }
-                
-                let results = documents.compactMap { document in
-                    try? Firestore.Decoder().decode(type, from: document.data())
+                let results: [T] = documents.compactMap { document in
+                    var data = document.data()
+                    if data["id"] == nil {
+                        data["id"] = document.documentID
+                    }
+                    return try? Firestore.Decoder().decode(type, from: data)
                 }
-                
-                promise(.success(results))
+                subject.send(results)
             }
+            return subject
+                .handleEvents(receiveCancel: {
+                    listener.remove()
+                })
+                .eraseToAnyPublisher()
         }
         .eraseToAnyPublisher()
     }
     
-    /// Listen to real-time updates for a single document
+    /// Listen to real-time updates for a single document (multi-emission, not `Future`).
     func listenToDocument<T: Codable>(_ type: T.Type, from collection: String, withId id: String) -> AnyPublisher<T?, Error> {
-        return Future<T?, Error> { [weak self] promise in
+        Deferred { [weak self] () -> AnyPublisher<T?, Error> in
             guard let self = self else {
-                promise(.failure(FirebaseError.serviceUnavailable))
-                return
+                return Fail(error: FirebaseError.serviceUnavailable).eraseToAnyPublisher()
             }
-            
+            let subject = PassthroughSubject<T?, Error>()
             let listener = self.db.collection(collection).document(id).addSnapshotListener { document, error in
                 if let error = error {
-                    promise(.failure(error))
+                    subject.send(completion: .failure(error))
                     return
                 }
-                
                 guard let document = document, document.exists else {
-                    promise(.success(nil))
+                    subject.send(nil)
                     return
                 }
-                
                 do {
-                    let data = try Firestore.Decoder().decode(type, from: document.data() ?? [:])
-                    promise(.success(data))
+                    var data = document.data() ?? [:]
+                    if data["id"] == nil {
+                        data["id"] = document.documentID
+                    }
+                    let decoded = try Firestore.Decoder().decode(type, from: data)
+                    subject.send(decoded)
                 } catch {
-                    promise(.failure(error))
+                    subject.send(completion: .failure(error))
                 }
             }
+            return subject
+                .handleEvents(receiveCancel: {
+                    listener.remove()
+                })
+                .eraseToAnyPublisher()
         }
         .eraseToAnyPublisher()
     }
@@ -225,6 +237,57 @@ class FirebaseService: ObservableObject {
                 }
                 
                 promise(.success(results))
+            }
+        }
+        .eraseToAnyPublisher()
+    }
+    
+    /// Fetch multiple documents by their IDs
+    func fetchDocumentsByIds<T: Codable>(_ type: T.Type, from collection: String, ids: [String]) -> AnyPublisher<[T], Error> {
+        guard !ids.isEmpty else {
+            return Future { promise in
+                promise(.success([]))
+            }
+            .eraseToAnyPublisher()
+        }
+        
+        return Future { [weak self] promise in
+            guard let self = self else {
+                promise(.failure(FirebaseError.serviceUnavailable))
+                return
+            }
+            
+            // Fetch documents directly by their IDs (more efficient than querying)
+            let resultsQueue = DispatchQueue(label: "com.pawmap.fetchResults")
+            var allResults: [T] = []
+            let dispatchGroup = DispatchGroup()
+            
+            for id in ids {
+                dispatchGroup.enter()
+                self.db.collection(collection).document(id).getDocument { document, error in
+                    defer { dispatchGroup.leave() }
+                    
+                    // Skip documents that don't exist or have errors
+                    guard error == nil, let document = document, document.exists else {
+                        return
+                    }
+                    
+                    do {
+                        var data = document.data() ?? [:]
+                        data["id"] = document.documentID
+                        let decoded = try Firestore.Decoder().decode(type, from: data)
+                        resultsQueue.sync {
+                            allResults.append(decoded)
+                        }
+                    } catch {
+                        // Skip documents that can't be decoded
+                    }
+                }
+            }
+            
+            dispatchGroup.notify(queue: .main) {
+                // Return results (partial success is acceptable)
+                promise(.success(allResults))
             }
         }
         .eraseToAnyPublisher()

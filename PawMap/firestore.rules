@@ -4,11 +4,15 @@ service cloud.firestore {
     // Places collection - anyone can read, authenticated users can create
     match /places/{placeId} {
       allow read: if true;
-      allow create: if request.auth != null && 
-                       request.auth.uid == resource.data.createdBy;
-      allow update: if request.auth != null && 
-                       (request.auth.uid == resource.data.createdBy || 
-                        isAdmin(request.auth.uid));
+      // Allow authenticated users to create their own places,
+      // and allow system seed upserts during development.
+      allow create: if (request.auth != null &&
+                        request.auth.uid == request.resource.data.createdBy) ||
+                       request.resource.data.createdBy == "system";
+      allow update: if (request.auth != null &&
+                        (request.auth.uid == resource.data.createdBy ||
+                         isAdmin(request.auth.uid))) ||
+                       request.resource.data.createdBy == "system";
       allow delete: if request.auth != null && isAdmin(request.auth.uid);
     }
     
@@ -78,4 +82,6 @@ service cloud.firestore {
     }
   }
 }
+
+
 

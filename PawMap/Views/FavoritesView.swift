@@ -73,7 +73,7 @@ struct FavoritesView: View {
                     
                     CategoryFilterButton(
                         title: "Beaches",
-                        icon: "umbrella.beach.fill",
+                        icon: "beach.umbrella.fill",
                         isSelected: selectedCategory == .beach,
                         action: { selectedCategory = .beach }
                     )
@@ -154,12 +154,12 @@ struct EmptyFavoritesView: View {
                 .font(.system(size: 60))
                 .foregroundColor(.gray)
             
-            Text("还没有想带\(userManager.currentUser?.dogName ?? "我的狗狗")去的地方")
+            Text("No spots saved for \(userManager.currentUser?.dogName ?? "your dog") yet")
                 .font(.title2)
                 .fontWeight(.medium)
                 .foregroundColor(.secondary)
             
-            Text("在地图上探索并收藏你想带狗狗去的地方")
+            Text("Explore the map and tap ❤️ to save places to visit")
                 .font(.body)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
@@ -286,7 +286,7 @@ struct PlaceholderImageView: View {
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color(place.type.color).opacity(0.3))
+                .fill(placeColor(for: place.type).opacity(0.3))
                 .frame(width: 280, height: 160)
             
             VStack(spacing: 8) {
@@ -326,10 +326,10 @@ struct FavoritePlaceRow: View {
     
     var body: some View {
         HStack(spacing: 12) {
-            // 类型图标
+            // Type icon
             ZStack {
                 Circle()
-                    .fill(Color(place.type.color))
+                    .fill(placeColor(for: place.type))
                     .frame(width: 50, height: 50)
                 
                 Image(systemName: place.type.iconName)
@@ -337,7 +337,7 @@ struct FavoritePlaceRow: View {
                     .font(.system(size: 20, weight: .medium))
             }
             
-            // 地点信息
+            // Place info
             VStack(alignment: .leading, spacing: 4) {
                 Text(place.name)
                     .font(.headline)
@@ -365,17 +365,17 @@ struct FavoritePlaceRow: View {
                     
                     Text(place.type.displayName)
                         .font(.caption)
-                        .foregroundColor(Color(place.type.color))
+                        .foregroundColor(placeColor(for: place.type))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 2)
-                        .background(Color(place.type.color).opacity(0.1))
+                        .background(placeColor(for: place.type).opacity(0.1))
                         .cornerRadius(4)
                 }
             }
             
             Spacer()
             
-            // 取消收藏按钮
+            // Remove favorite
             Button(action: {
                 userManager.toggleFavorite(placeId: place.id)
             }) {
@@ -385,6 +385,19 @@ struct FavoritePlaceRow: View {
             }
         }
         .padding(.vertical, 4)
+    }
+}
+
+private func placeColor(for type: Place.PlaceType) -> Color {
+    switch type {
+    case .coffee: return .orange
+    case .trail: return .green
+    case .park: return .blue
+    case .beach: return .cyan
+    case .shop: return .purple
+    case .camp: return .brown
+    case .restaurant: return .red
+    case .other: return .gray
     }
 }
 

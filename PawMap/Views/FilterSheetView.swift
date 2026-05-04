@@ -7,24 +7,21 @@ struct FilterSheetView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                // 标题
                 VStack(spacing: 8) {
-                    Text("筛选地点")
+                    Text("Filter places")
                         .font(.title2)
                         .fontWeight(.bold)
                     
-                    Text("选择您想要查看的地点类型")
+                    Text("Choose which types to show")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
                 .padding(.top, 20)
                 .padding(.bottom, 30)
                 
-                // 筛选选项
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 16) {
-                    // 全部选项
                     FilterCard(
-                        title: "全部",
+                        title: "All",
                         icon: "globe",
                         color: .gray,
                         isSelected: selectedFilter == nil
@@ -32,7 +29,6 @@ struct FilterSheetView: View {
                         selectedFilter = nil
                     }
                     
-                    // 各种类型
                     ForEach(Place.PlaceType.allCases, id: \.self) { type in
                         FilterCard(
                             title: type.displayName,
@@ -48,12 +44,11 @@ struct FilterSheetView: View {
                 
                 Spacer()
                 
-                // 底部按钮
                 VStack(spacing: 12) {
                     Button(action: {
                         selectedFilter = nil
                     }) {
-                        Text("清除筛选")
+                        Text("Clear filters")
                             .font(.headline)
                             .foregroundColor(.blue)
                             .frame(maxWidth: .infinity)
@@ -65,7 +60,7 @@ struct FilterSheetView: View {
                     Button(action: {
                         dismiss()
                     }) {
-                        Text("应用筛选")
+                        Text("Apply")
                             .font(.headline)
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)

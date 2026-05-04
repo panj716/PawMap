@@ -1,8 +1,10 @@
 import SwiftUI
+import CoreLocation
 
 struct SearchSheetView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var placesManager: PlacesManager
+    @EnvironmentObject var placeViewModel: PlaceViewModel
     @Binding var searchText: String
     
     @State private var searchResults: [Place] = []
@@ -11,12 +13,11 @@ struct SearchSheetView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                // 搜索栏
                 HStack {
                     Image(systemName: "magnifyingglass")
                         .foregroundColor(.gray)
                     
-                    TextField("搜索地点、地址或标签...", text: $searchText)
+                    TextField("Place, address, tag, or US ZIP (e.g. 48104)", text: $searchText)
                         .textFieldStyle(PlainTextFieldStyle())
                         .onChange(of: searchText) { _, newValue in
                             performSearch(query: newValue)
@@ -39,11 +40,10 @@ struct SearchSheetView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
                 
-                // 搜索结果
                 if isSearching {
                     VStack {
                         Spacer()
-                        ProgressView("搜索中...")
+                        ProgressView("Searching…")
                         Spacer()
                     }
                 } else if searchResults.isEmpty && !searchText.isEmpty {
@@ -54,11 +54,11 @@ struct SearchSheetView: View {
                             .font(.system(size: 50))
                             .foregroundColor(.gray)
                         
-                        Text("未找到结果")
+                        Text("No results")
                             .font(.headline)
                             .foregroundColor(.secondary)
                         
-                        Text("尝试使用不同的关键词搜索")
+                        Text("Try different keywords")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                         
@@ -72,23 +72,22 @@ struct SearchSheetView: View {
                             .font(.system(size: 50))
                             .foregroundColor(.blue)
                         
-                        Text("搜索狗狗友好的地方")
+                        Text("Search dog-friendly places")
                             .font(.title2)
                             .fontWeight(.bold)
                         
-                        Text("输入地点名称、地址或标签来搜索")
+                        Text("Enter a name, address, or tag")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
                         
-                        // 热门搜索
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("热门搜索")
+                            Text("Popular searches")
                                 .font(.headline)
                                 .padding(.top, 20)
                             
                             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), spacing: 8) {
-                                ForEach(["咖啡店", "狗公园", "海滩", "步道"], id: \.self) { tag in
+                                ForEach(["Coffee", "Dog park", "Beach", "Trail"], id: \.self) { tag in
                                     Button(action: {
                                         searchText = tag
                                         performSearch(query: tag)
@@ -115,11 +114,11 @@ struct SearchSheetView: View {
                     .listStyle(PlainListStyle())
                 }
             }
-            .navigationTitle("搜索")
+            .navigationTitle("Search")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("完成") {
+                    Button("Done") {
                         dismiss()
                     }
                 }
@@ -134,15 +133,44 @@ struct SearchSheetView: View {
         }
         
         isSearching = true
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        let digitsOnly = trimmed.filter(\.isNumber)
+        // US ZIP: 5 digits, or ZIP+4 (9 digits, often typed with a hyphen)
+        let looksLikeUSZip = digitsOnly.count == 5 || (digitsOnly.count == 9 && trimmed.contains("-"))
         
-        // 模拟搜索延迟
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            searchResults = placesManager.places.filter { place in
-                place.name.localizedCaseInsensitiveContains(query) ||
-                place.address.localizedCaseInsensitiveContains(query) ||
-                place.tags.contains { $0.localizedCaseInsensitiveContains(query) } ||
-                place.type.displayName.localizedCaseInsensitiveContains(query)
+        if looksLikeUSZip {
+            let zip = String(digitsOnly.prefix(5))
+            let geocoder = CLGeocoder()
+            geocoder.geocodeAddressString(zip) { placemarks, error in
+                DispatchQueue.main.async {
+                    defer { self.isSearching = false }
+                    guard error == nil, let coordinate = placemarks?.first?.location?.coordinate else {
+                        // Fallback: substring match on address (zip appears in many addresses)
+                        self.searchResults = self.placeViewModel.places.filter { $0.address.contains(zip) }
+                        return
+                    }
+                    let center = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+                    let radiusMeters = 10.0 * 1609.344
+                    self.searchResults = self.placeViewModel.places.filter { place in
+                        let loc = CLLocation(latitude: place.latitude, longitude: place.longitude)
+                        return center.distance(from: loc) <= radiusMeters
+                    }
+                    .sorted { $0.name < $1.name }
+                }
             }
+            return
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            let q = trimmed
+            searchResults = placeViewModel.places.filter { place in
+                place.name.localizedCaseInsensitiveContains(q) ||
+                place.address.localizedCaseInsensitiveContains(q) ||
+                place.notes.localizedCaseInsensitiveContains(q) ||
+                place.tags.contains { $0.localizedCaseInsensitiveContains(q) } ||
+                place.type.displayName.localizedCaseInsensitiveContains(q)
+            }
+            .sorted { $0.name < $1.name }
             isSearching = false
         }
     }
@@ -158,10 +186,10 @@ struct SearchResultRow: View {
             showingDetail = true
         }) {
             HStack(spacing: 12) {
-                // 类型图标
+                // Type icon
                 ZStack {
                     Circle()
-                        .fill(Color(place.type.color))
+                        .fill(placeColor(for: place.type))
                         .frame(width: 40, height: 40)
                     
                     Image(systemName: place.type.iconName)
@@ -169,7 +197,7 @@ struct SearchResultRow: View {
                         .font(.system(size: 18, weight: .medium))
                 }
                 
-                // 地点信息
+                // Place info
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         Text(place.name)
@@ -207,10 +235,10 @@ struct SearchResultRow: View {
                         
                         Text(place.type.displayName)
                             .font(.caption)
-                            .foregroundColor(Color(place.type.color))
+                            .foregroundColor(placeColor(for: place.type))
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(Color(place.type.color).opacity(0.1))
+                            .background(placeColor(for: place.type).opacity(0.1))
                             .cornerRadius(4)
                     }
                 }
@@ -224,8 +252,22 @@ struct SearchResultRow: View {
     }
 }
 
+private func placeColor(for type: Place.PlaceType) -> Color {
+    switch type {
+    case .coffee: return .orange
+    case .trail: return .green
+    case .park: return .blue
+    case .beach: return .cyan
+    case .shop: return .purple
+    case .camp: return .brown
+    case .restaurant: return .red
+    case .other: return .gray
+    }
+}
+
 #Preview {
     SearchSheetView(searchText: .constant(""))
         .environmentObject(PlacesManager())
+        .environmentObject(PlaceViewModel())
         .environmentObject(UserManager())
 }

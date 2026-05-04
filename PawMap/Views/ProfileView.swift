@@ -9,6 +9,7 @@ struct ProfileView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @State private var showingLogin = false
     @State private var showingEditProfile = false
+    @State private var dogPhotoPickerItem: PhotosPickerItem?
     
     var body: some View {
         NavigationView {
@@ -35,7 +36,15 @@ struct ProfileView: View {
     
     private var loggedInView: some View {
         ScrollView {
-            VStack(spacing: 0) {
+            loggedInProfileScrollContent
+        }
+        .background(Color.white)
+        .navigationBarHidden(true)
+    }
+    
+    @ViewBuilder
+    private var loggedInProfileScrollContent: some View {
+        VStack(spacing: 0) {
                 // Header with edit and sign out buttons
                 HStack {
                     Text("My Profile")
@@ -65,67 +74,35 @@ struct ProfileView: View {
                 
                 Spacer(minLength: 30)
                 
-                // Dog Profile Section
+                // Profile: single pet photo (uploads to dogPhotoUrl; shows legacy profileImageUrl if dog slot empty)
                 VStack(spacing: 20) {
-                    // User Profile Picture
-                    ZStack {
-                        Circle()
-                            .fill(Color.gray.opacity(0.2))
-                            .frame(width: 80, height: 80)
-                            .overlay(
-                                Group {
-                                    if false, // let profileImage = userManager.currentUser?.profileImageURL, // TODO: Load image from URL
-                                       let uiImage = UIImage(data: Data()) {
-                                        Image(uiImage: uiImage)
-                                            .resizable()
-                                            .aspectRatio(contentMode: .fill)
-                                            .frame(width: 80, height: 80)
-                                            .clipShape(Circle())
-                                    } else {
-                                        Image(systemName: "person.circle.fill")
-                                            .font(.system(size: 40))
-                                            .foregroundColor(.gray)
-                                    }
-                                }
-                            )
-                        
-                        // Edit user photo button
-                        PhotosPicker(selection: Binding(
-                            get: { nil },
-                            set: { item in
-                                Task {
-                                    if let data = try? await item?.loadTransferable(type: Data.self) {
-                                        userManager.updateProfilePhoto(data)
-                                    }
-                                }
-                            }
-                        ), matching: .images) {
-                    Circle()
-                        .fill(Color.blue)
-                                .frame(width: 24, height: 24)
-                        .overlay(
-                                    Image(systemName: "camera.fill")
-                                        .font(.system(size: 12))
-                                .foregroundColor(.white)
-                        )
-                        }
-                        .offset(x: 30, y: 30)
-                    }
-                    
-                    // Dog Profile Picture
                     ZStack {
                         Circle()
                             .fill(Color.gray.opacity(0.2))
                             .frame(width: 120, height: 120)
                             .overlay(
                                 Group {
-                                    if false, // let dogPhoto = userManager.currentUser?.dogPhotoURL, // TODO: Load image from URL
-                                       let uiImage = UIImage(data: Data()) {
-                                        Image(uiImage: uiImage)
-                                            .resizable()
-                                            .aspectRatio(contentMode: .fill)
-                                            .frame(width: 120, height: 120)
-                                            .clipShape(Circle())
+                                    if let urlStr = petProfilePhotoURLString,
+                                       let url = URL(string: urlStr),
+                                       url.scheme == "http" || url.scheme == "https" {
+                                        AsyncImage(url: url) { phase in
+                                            switch phase {
+                                            case .success(let image):
+                                                image
+                                                    .resizable()
+                                                    .scaledToFill()
+                                            case .failure:
+                                                Image(systemName: "pawprint.fill")
+                                                    .font(.system(size: 40))
+                                                    .foregroundColor(.gray)
+                                            case .empty:
+                                                ProgressView()
+                                            @unknown default:
+                                                EmptyView()
+                                            }
+                                        }
+                                        .frame(width: 120, height: 120)
+                                        .clipShape(Circle())
                                     } else {
                                         Image(systemName: "pawprint.fill")
                                             .font(.system(size: 40))
@@ -134,17 +111,7 @@ struct ProfileView: View {
                                 }
                             )
                         
-                        // Edit dog photo button
-                        PhotosPicker(selection: Binding(
-                            get: { nil },
-                            set: { item in
-                                Task {
-                                    if let data = try? await item?.loadTransferable(type: Data.self) {
-                                        userManager.updateDogPhoto(data)
-                                    }
-                                }
-                            }
-                        ), matching: .images) {
+                        PhotosPicker(selection: $dogPhotoPickerItem, matching: .images) {
                             Circle()
                                 .fill(Color.green)
                                 .frame(width: 32, height: 32)
@@ -156,17 +123,13 @@ struct ProfileView: View {
                         }
                         .offset(x: 40, y: 40)
                     }
-                    
-                    // User Name
-                    Text(authViewModel.currentUser?.name ?? "User")
-                        .font(.title2)
-                        .fontWeight(.bold)
-                        .foregroundColor(.black)
-                    
-                    // Email
-                    Text(authViewModel.currentUser?.email ?? "")
-                        .font(.subheadline)
-                        .foregroundColor(.gray)
+                    .onChange(of: dogPhotoPickerItem) { _, item in
+                        Task {
+                            guard let item,
+                                  let data = try? await item.loadTransferable(type: Data.self) else { return }
+                            authViewModel.uploadDogPhoto(data)
+                        }
+                    }
                     
                     // Dog Name
                     Text((authViewModel.currentUser?.dogName?.isEmpty == false) ? (authViewModel.currentUser?.dogName ?? "Your Dog's Name") : "Your Dog's Name")
@@ -275,7 +238,7 @@ struct ProfileView: View {
                 }
                 
                 Button(action: {
-                    userManager.logout()
+                    authViewModel.signOut()
                 }) {
                     HStack {
                                 Image(systemName: "arrow.right.square")
@@ -293,9 +256,13 @@ struct ProfileView: View {
                 }
                 .padding(.horizontal, 20)
             }
-        }
-        .background(Color.white)
-        .navigationBarHidden(true)
+    }
+    
+    /// Pet circle: prefer `dogPhotoUrl`; fall back to legacy `profileImageUrl` so older uploads still show.
+    private var petProfilePhotoURLString: String? {
+        let u = authViewModel.currentUser
+        if let dog = u?.dogPhotoUrl, !dog.isEmpty { return dog }
+        return u?.profileImageUrl
     }
     
     private var traitIcons: [String] {
@@ -448,7 +415,7 @@ struct DogProfileSection: View {
     
     var body: some View {
         VStack(spacing: 16) {
-            // 狗狗照片
+            // Dog photo
             VStack(spacing: 12) {
                 if false, // let dogPhotoData = userManager.currentUser?.dogPhotoURL, // TODO: Load image from URL
                    let uiImage = UIImage(data: Data()) {
@@ -481,7 +448,7 @@ struct DogProfileSection: View {
                 }
                 
                 PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                    Text("添加狗狗照片")
+                    Text("Add dog photo")
                         .font(.subheadline)
                         .foregroundColor(.pink)
                         .padding(.horizontal, 16)
@@ -491,14 +458,14 @@ struct DogProfileSection: View {
                 }
             }
             
-            // 狗狗信息
+            // Dog info
             VStack(spacing: 8) {
-                Text(userManager.currentUser?.dogName ?? "我的狗狗")
+                Text(userManager.currentUser?.dogName ?? "My dog")
                     .font(.title2)
                     .fontWeight(.bold)
                     .foregroundColor(.primary)
                 
-                Text(userManager.currentUser?.dogBreed ?? "狗狗品种")
+                Text(userManager.currentUser?.dogBreed ?? "Breed")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
@@ -603,6 +570,10 @@ struct EditProfileView: View {
         .onAppear {
             loadCurrentData()
         }
+        .onChange(of: authViewModel.currentUser?.id) { _, _ in
+            // Auth profile may arrive asynchronously after sheet is presented.
+            loadCurrentData()
+        }
     }
     
     private func loadCurrentData() {
@@ -644,6 +615,7 @@ struct EditProfileView: View {
             email: user.email,
             name: name,
             profileImageUrl: user.profileImageUrl,
+            dogPhotoUrl: user.dogPhotoUrl,
             dogName: dogName.isEmpty ? nil : dogName,
             dogBreed: dogBreed.isEmpty ? nil : dogBreed,
             dogBirthday: dogBirthday,
@@ -665,6 +637,7 @@ struct EditProfileView: View {
 #Preview {
     ProfileView()
         .environmentObject(UserManager())
+        .environmentObject(AuthViewModel())
 }
 
 // Extension for safe array access

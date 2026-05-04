@@ -8,9 +8,10 @@ class LocationManager: NSObject, ObservableObject {
     private let locationManager = CLLocationManager()
     
     @Published var location: CLLocation?
+    /// Default view: Ann Arbor–Birmingham corridor so curated “district” pins (e.g. Birmingham) stay on-screen.
     @Published var region = MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 42.2464, longitude: -83.7417), // Ann Arbor, Michigan - User's location
-        span: MKCoordinateSpan(latitudeDelta: 0.3, longitudeDelta: 0.3) // Focused view on Ann Arbor areachig vi
+        center: CLLocationCoordinate2D(latitude: 42.39, longitude: -83.50),
+        span: MKCoordinateSpan(latitudeDelta: 0.42, longitudeDelta: 0.58)
     )
     @Published var authorizationStatus: CLAuthorizationStatus = .notDetermined
     @Published var isLoading = false
@@ -19,8 +20,8 @@ class LocationManager: NSObject, ObservableObject {
     @Published var isFollowingUser = false
     @Published var mapCameraPosition = MapCameraPosition.region(
         MKCoordinateRegion(
-            center: CLLocationCoordinate2D(latitude: 42.2464, longitude: -83.7417), // Ann Arbor, Michigan - User's location
-            span: MKCoordinateSpan(latitudeDelta: 0.3, longitudeDelta: 0.3) // Focused view on Ann Arbor area
+            center: CLLocationCoordinate2D(latitude: 42.39, longitude: -83.50),
+            span: MKCoordinateSpan(latitudeDelta: 0.42, longitudeDelta: 0.58)
         )
     )
     
@@ -36,15 +37,7 @@ class LocationManager: NSObject, ObservableObject {
         authorizationStatus = locationManager.authorizationStatus
         
         
-        // Request permission immediately when app starts
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            self.requestLocationPermission()
-        }
-        
-        // Auto-start location updates if permission is already granted
-        if authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways {
-            startLocationUpdates()
-        }
+        // Zipcode flow does not require auto location permission prompt.
     }
     
     func requestLocationPermission() {
@@ -100,6 +93,12 @@ class LocationManager: NSObject, ObservableObject {
         )
         
         // Update both region and camera position
+        region = newRegion
+        mapCameraPosition = .region(newRegion)
+    }
+    
+    /// Sets both `region` and `mapCameraPosition` (SwiftUI `Map`) to the same logical area.
+    func applyMapRegion(_ newRegion: MKCoordinateRegion) {
         region = newRegion
         mapCameraPosition = .region(newRegion)
     }
@@ -228,7 +227,7 @@ extension LocationManager: CLLocationManagerDelegate {
     }
     
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        print("位置错误: \(error.localizedDescription)")
+        print("Location error: \(error.localizedDescription)")
         DispatchQueue.main.async {
             self.isLoading = false
         }
@@ -241,10 +240,7 @@ extension LocationManager: CLLocationManagerDelegate {
             
             switch status {
             case .authorizedWhenInUse, .authorizedAlways:
-                print("Location authorized, starting location updates immediately")
-                self.startLocationUpdates()
-                // Automatically start following user location when permission is granted
-                self.startFollowingUser()
+                print("Location authorized")
             case .denied, .restricted:
                 print("Location access denied or restricted")
                 self.isLoading = false

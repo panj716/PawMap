@@ -19,7 +19,7 @@ struct ExploreView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
                         FilterButton(
-                            title: "全部",
+                            title: "All",
                             isSelected: selectedType == nil,
                             action: { selectedType = nil }
                         )
@@ -40,7 +40,7 @@ struct ExploreView: View {
                     SimplePlaceRow(place: place)
                 }
             }
-            .navigationTitle("探索")
+            .navigationTitle("Explore")
         }
     }
     
@@ -70,7 +70,7 @@ struct SearchBar: View {
             Image(systemName: "magnifyingglass")
                 .foregroundColor(.gray)
             
-            TextField("搜索地点...", text: $text)
+            TextField("Search places...", text: $text)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
         }
         .padding(.horizontal)
