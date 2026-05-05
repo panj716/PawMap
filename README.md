@@ -16,13 +16,11 @@ Users can explore nearby spots, leave reviews, upload photos, and share recommen
 
 📸 Photo Uploads — Store and display community-contributed images.
 
-🌟 Top Picks Algorithm — Highlights the most popular and highly-rated places nationwide.
-
-🚦 Moderation Layer (Coming Soon) — Community moderation and contributor ranking system.
-
 ## 💡 **Future Roadmap**
 
 ✅ Real-time data sync and auth integration
+
+🚦 Moderation Layer (Coming Soon) — Community moderation and contributor ranking system.
 
 🔜 Moderation dashboard and contributor levels
 
